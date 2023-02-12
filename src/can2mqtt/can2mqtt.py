@@ -19,7 +19,7 @@ from .consts import (
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("can2mqtt")
 
 
 TOPIC_RE = re.compile(
