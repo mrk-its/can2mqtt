@@ -1,0 +1,15 @@
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  password: ""
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino

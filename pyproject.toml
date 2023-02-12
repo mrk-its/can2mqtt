@@ -1,0 +1,21 @@
+[project]
+name = "can2mqtt"
+version = "0.0.1"
+authors = [
+    {name="Mariusz Kryński", email="mrk@sed.pl"}
+]
+requires-python = ">=3.10"
+
+dependencies = [
+    "python-can",
+    "asyncio-mqtt",
+    "pyserial",
+]
+
+[project.scripts]  # Optional
+can2mqtt = "main:main"
+
+[project.optional-dependencies]
+dev = [
+    "black"
+]
