@@ -39,7 +39,7 @@ sensor:
   - platform: uptime
     id: uptime_sensor
     name: "Uptime1"
-    update_interval: 60sec
+    update_interval: 5sec
     internal: true
 
 binary_sensor:
