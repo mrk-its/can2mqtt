@@ -205,7 +205,7 @@ async def start(
     interface,
     channel,
     bitrate,
-    mqtt_topic_prefix=consts.MQTT_TOPIC_PREFIX,
+    mqtt_topic_prefix,
     **kwargs,
 ):
     with can.Bus(
