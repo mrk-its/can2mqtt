@@ -1,11 +1,42 @@
 from collections import defaultdict
 
 MQTT_TOPIC_PREFIX = "homeassistant"
-CAN_CMD_BIT = 0x10000000
+CAN_CMD_BIT = 0x8
+
+PROPERTY_STATE0 = 0
+PROPERTY_STATE1 = 1
+PROPERTY_STATE2 = 2
+PROPERTY_STATE3 = 3
+
+PROPERTY_CMD0 = 4
+PROPERTY_CMD1 = 5
+PROPERTY_CMD2 = 6
+PROPERTY_CMD3 = 7
+
+PROPERTY_CONFIG = 8
+PROPERTY_CONFIG_NAME = 9
+PROPERTY_CONFIG_NAME2 = 10
+PROPERTY_CONFIG_UNIT = 11
+
+
+ENTITY_TYPE_SENSOR = 0
+ENTITY_TYPE_BINARY_SENSOR = 1
+ENTITY_TYPE_SWITCH = 2
+ENTITY_TYPE_COVER = 3
+
+ENTITY_TYPE_NAME = {
+    ENTITY_TYPE_SENSOR: "sensor",
+    ENTITY_TYPE_BINARY_SENSOR: "binary_sensor",
+    ENTITY_TYPE_SWITCH: "switch",
+    ENTITY_TYPE_COVER: "cover",
+}
+
+SUPPORTED_TYPE_NAMES = list(ENTITY_TYPE_NAME.values())
+
+TYPE_NAME_TO_TYPE = {v: k for k, v in ENTITY_TYPE_NAME.items()}
 
 DEVICE_CLASS = {
     "sensor": {
-        0: "None",
         1: "apparent_power",
         2: "aqi",
         3: "atmospheric_pressure",
@@ -54,7 +85,6 @@ DEVICE_CLASS = {
         46: "wind_speed",
     },
     "cover": {
-        0: "None",
         1: "awning",
         2: "blind",
         3: "curtain",
@@ -67,7 +97,6 @@ DEVICE_CLASS = {
         10: "window",
     },
     "binary_sensor": {
-        0: "None",
         1: "battery",
         2: "battery_charging",
         3: "carbon_monoxide",
@@ -104,11 +133,3 @@ STATE_CLASS = {
     2: "total",
     3: "total_increasing",
 }
-
-TYPE_TO_NAME = {
-    1: "sensor",
-    2: "binary_sensor",
-    3: "switch",
-}
-
-NAME_TO_TYPE = {v: k for k, v in TYPE_TO_NAME.items()}

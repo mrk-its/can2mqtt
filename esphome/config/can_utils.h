@@ -1,10 +1,25 @@
-const int32_t SENSOR = 0x1000;
-const int32_t BINARY_SENSOR = 0x2000;
-const int32_t SWITCH = 0x3000;
+const int8_t ENTITY_TYPE_SENSOR = 0;
+const int8_t ENTITY_TYPE_BINARY_SENSOR = 1;
+const int8_t ENTITY_TYPE_SWITCH = 2;
+const int8_t ENTITY_TYPE_COVER = 3;
 
-const int32_t NAME = 0xf0000;
-const int32_t UNIT_OF_MEASUREMENT = 0xd0000;
-const int32_t MISC = 0xe0000;
+const int32_t PROPERTY_STATE0 = 0;
+const int32_t PROPERTY_STATE1= 1;
+const int32_t PROPERTY_STATE2 = 2;
+const int32_t PROPERTY_STATE3 = 3;
+
+const int32_t PROPERTY_CMD0 = 4;
+const int32_t PROPERTY_CMD1 = 5;
+const int32_t PROPERTY_CMD2 = 6;
+const int32_t PROPERTY_CMD3 = 7;
+
+
+const int32_t PROPERTY_CONFIG = 8;  // D0 - entity type, D1: device_class, D2: state_class
+
+const int32_t PROPERTY_CONFIG_NAME = 9;
+const int32_t PROPERTY_CONFIG_NAME2 = 10;
+const int32_t PROPERTY_CONFIG_UNIT = 11;
+
 
 const std::map<std::string, uint8_t> SENSOR_DEVICE_CLASS = {
     {"None", 0}, {"apparent_power", 1}, {"aqi", 2}, {"atmospheric_pressure", 3}, {"battery", 4}, {"carbon_dioxide", 5},
@@ -45,98 +60,99 @@ void can_cmd_message(uint32_t can_id, bool rtr, std::vector<uint8_t> &data) {
     }
 }
 
-void can_send_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t node_id, uint32_t sub_id, float x) {
+void can_send_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, float x) {
     std::vector<uint8_t> data((uint8_t *)&x, ((uint8_t *)&x) + sizeof(x));
-    can_bus->send_data(SENSOR | (sub_id << 8) | node_id, true, data);
+    can_bus->send_data(entity_id << 4, true, data);
 };
 
-void can_send_binary_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t node_id, uint32_t sub_id, bool x) {
+void can_send_switch_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, bool x) {
     std::vector<uint8_t> data = {x};
-    can_bus->send_data(BINARY_SENSOR | (sub_id << 8) | node_id, true, data);
+    can_bus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
+
+}
+
+void can_send_binary_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, bool x) {
+    std::vector<uint8_t> data = {x};
+    can_bus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
 };
 
-void can_send_string_prop(esphome::esp32_can::ESP32Can* can_bus,uint32_t node_type, uint32_t node_id, uint32_t sub_id,  uint32_t prop, std::string name) {
+void can_send_string_prop(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, uint32_t prop, std::string name) {
     std::vector<uint8_t> data(name.begin(), name.end());
-    can_bus->send_data(prop | node_type | (sub_id << 8) | node_id, true, data);
+    can_bus->send_data((entity_id << 4) | prop, true, data);
 };
 
 void can_configure_sensor(
     esphome::esp32_can::ESP32Can* can_bus,
     esphome::sensor::Sensor* sensor,
-    uint32_t node_id,
-    uint32_t sub_id=0
+    uint32_t entity_id
 ) {
-    can_send_string_prop(can_bus, SENSOR, node_id, sub_id, NAME, sensor->get_name());
-    can_send_string_prop(can_bus, SENSOR, node_id, sub_id, UNIT_OF_MEASUREMENT, sensor->get_unit_of_measurement());
-
     uint8_t device_class = 0;
     auto it = SENSOR_DEVICE_CLASS.find(sensor->get_device_class());
     if(it != SENSOR_DEVICE_CLASS.end()) {
         device_class = it->second;
     }
-    std::vector<uint8_t> data = { device_class, sensor->get_state_class(), };
-    can_bus->send_data(MISC | SENSOR | (sub_id << 8) | node_id, true, data);
+    std::vector<uint8_t> data = { ENTITY_TYPE_SENSOR, device_class, sensor->get_state_class(), };
+    can_bus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);
+
+    can_send_string_prop(can_bus, entity_id, PROPERTY_CONFIG_NAME, sensor->get_name());
+    can_send_string_prop(can_bus, entity_id, PROPERTY_CONFIG_UNIT, sensor->get_unit_of_measurement());
 
     if(!initialized_entities.count(sensor->get_object_id())) {
-        sensor->add_on_state_callback([can_bus, node_id, sub_id](float value) {
-            can_send_sensor_state(can_bus, node_id, sub_id, value);
+        sensor->add_on_state_callback([can_bus, entity_id](float value) {
+            can_send_sensor_state(can_bus, entity_id, value);
         });
         initialized_entities[sensor->get_object_id()] = true;
     }
 
     if(sensor->has_state())
-        can_send_sensor_state(can_bus, node_id, sub_id, sensor->state);
+        can_send_sensor_state(can_bus, entity_id, sensor->state);
 };
 
 void can_configure_binary_sensor(
     esphome::esp32_can::ESP32Can* can_bus,
     esphome::binary_sensor::BinarySensor* sensor,
-    uint32_t node_id,
-    uint32_t sub_id=0
+    uint32_t entity_id
 ) {
-    can_send_string_prop(can_bus, BINARY_SENSOR, node_id, sub_id, NAME, sensor->get_name());
-
     uint8_t device_class = 0;
     auto it = BINARY_SENSOR_DEVICE_CLASS.find(sensor->get_device_class());
     if(it != BINARY_SENSOR_DEVICE_CLASS.end()) {
         device_class = it->second;
     }
-    std::vector<uint8_t> data = { device_class };
-    can_bus->send_data(MISC | BINARY_SENSOR | (sub_id << 8) | node_id, true, data);
+    std::vector<uint8_t> data = { ENTITY_TYPE_BINARY_SENSOR, device_class };
+    can_bus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);
+    can_send_string_prop(can_bus, entity_id, PROPERTY_CONFIG_NAME, sensor->get_name());
 
     if(!initialized_entities.count(sensor->get_object_id())) {
-        sensor->add_on_state_callback([can_bus, node_id, sub_id](bool value) {
-            can_send_binary_sensor_state(can_bus, node_id, sub_id, value);
+        sensor->add_on_state_callback([can_bus, entity_id](bool value) {
+            can_send_binary_sensor_state(can_bus, entity_id, value);
         });
         initialized_entities[sensor->get_object_id()] = true;
     }
     if(sensor->has_state())
-        can_send_binary_sensor_state(can_bus, node_id, sub_id, sensor->state);
+        can_send_binary_sensor_state(can_bus, entity_id, sensor->state);
 };
 
 
 void can_configure_switch(
     esphome::esp32_can::ESP32Can* can_bus,
     esphome::switch_::Switch* switch_,
-    uint32_t node_id,
-    uint32_t sub_id=0
+    uint32_t entity_id
 ) {
-    can_send_string_prop(can_bus, SWITCH, node_id, sub_id, NAME, switch_->get_name());
-
     uint8_t device_class = 0;
     auto it = SWITCH_DEVICE_CLASS.find(switch_->get_device_class());
     if(it != SWITCH_DEVICE_CLASS.end()) {
         device_class = it->second;
     }
-    std::vector<uint8_t> data = { device_class };
-    can_bus->send_data(MISC | SWITCH | (sub_id << 8) | node_id, true, data);
+    std::vector<uint8_t> data = { ENTITY_TYPE_SWITCH, device_class };
+    can_bus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);
+    can_send_string_prop(can_bus, entity_id, PROPERTY_CONFIG_NAME, switch_->get_name());
 
     if(!initialized_entities.count(switch_->get_object_id())) {
-        switch_->add_on_state_callback([can_bus, node_id, sub_id](bool value) {
-            can_bus->send_data(SWITCH | (sub_id << 8) | node_id, true, {value});
+        switch_->add_on_state_callback([can_bus, entity_id](bool value) {
+            can_send_switch_state(can_bus, entity_id, value);
         });
 
-        can_cmd_handlers[0x10000000 | SWITCH | (sub_id << 8) | node_id] = [switch_](std::vector<uint8_t> &data) {
+        can_cmd_handlers[(entity_id << 4) | PROPERTY_CMD0] = [switch_](std::vector<uint8_t> &data) {
             if(data.size() && data[0]) {
                 switch_->turn_on();
             } else {
@@ -145,5 +161,6 @@ void can_configure_switch(
         };
         initialized_entities[switch_->get_object_id()] = true;
     }
+    can_send_switch_state(can_bus, entity_id, switch_->state);
 
 };

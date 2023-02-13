@@ -4,175 +4,210 @@ from collections import defaultdict
 import json
 import re
 import struct
+from dataclasses import dataclass
 
 import asyncio_mqtt as aiomqtt
 import can
 
-from .consts import (
-    DEVICE_CLASS,
-    STATE_CLASS,
-    NAME_TO_TYPE,
-    TYPE_TO_NAME,
-    MQTT_TOPIC_PREFIX,
-    CAN_CMD_BIT,
-)
+from . import consts
 
 import logging
 
 logger = logging.getLogger("can2mqtt")
 
 
-TOPIC_RE = re.compile(
-    MQTT_TOPIC_PREFIX
-    + "/(switch|sensor|binary_switch)/can_([0-9a-fA-F]{2})_([0-9a-fA-F])/(.*)"
-)
+def create_unique_id(entity_id):
+    return "can_{:x}".format(entity_id)
 
 
-def device_properties(node_type, data):
-    if len(data) > 0 and node_type in DEVICE_CLASS:
-        yield "device_class", DEVICE_CLASS[node_type].get(data[0], "None")
-    if len(data) > 1:
-        yield "state_class", STATE_CLASS.get(data[1], "None")
+class Entity:
+    def __init__(self, entity_id, mqtt_topic_prefix):
+        unique_id = create_unique_id(entity_id)
+        self.type_name = None
+        self._mqtt_topic_prefix = mqtt_topic_prefix
+
+        self._properties = {
+            "unique_id": unique_id,
+            "object_id": unique_id,
+        }
+
+    def __repr__(self):
+        return repr((self.type_name, self._properties))
+
+    def is_ready(self):
+        return self.type_name is not None
+
+    def set_type_id(self, _type):
+        self.type_name = consts.ENTITY_TYPE_NAME[_type]
+        self._properties["state_topic"] = self.state_topic
+        if self.type_name == "switch":
+            self._properties.update(
+                {"assumed_state": False, "command_topic": self.command_topic}
+            )
+
+    def set_type_name(self, type_name):
+        self.type_name = type_name
+
+    def update_properties(self, props):
+        if hasattr(props, "items"):
+            props = props.items()
+        for k, v in props:
+            if v is not None:
+                self._properties[k] = v
+            else:
+                self._properties.pop(k, None)
+
+    def parse_can_payload(self, data):
+        match self.type_name:
+            case "switch":
+                is_on = data and data[0]
+                return is_on and "ON" or "OFF"
+            case "binary_sensor":
+                is_on = data and data[0]
+                return is_on and "ON" or "OFF"
+            case "sensor":
+                if len(data) == 4:
+                    return str(struct.unpack_from("f", data)[0])
+                elif len(data) == 8:
+                    return str(struct.unpack_from("d", data)[0])
+
+    def parse_mqtt_payload(self, data):
+        match self.type_name:
+            case "switch":
+                return b"\x01" if data == b"ON" else b"\x00"
+            case _:
+                return data
+
+    @property
+    def unique_id(self):
+        return self._properties["unique_id"]
+
+    @property
+    def topic(self):
+        return f"{self._mqtt_topic_prefix}/{self.type_name}/{self.unique_id}"
+
+    @property
+    def state_topic(self):
+        return f"{self.topic}/state"
+
+    @property
+    def command_topic(self):
+        return f"{self.topic}/set"
+
+    @property
+    def config_topic(self):
+        return f"{self.topic}/config"
+
+    def get_config_topic(self, type_name):
+        return f"{self._mqtt_topic_prefix}/{type_name}/{self.unique_id}"
+
+    @property
+    def config_topics_to_invalidate(self):
+        return [self.get_config_topic(type_name) for type_name in consts.SUPPORTED_TYPE_NAMES if type_name != self.type_name]
+
+class EntityRegistry:
+    def __init__(self, mqtt_topic_prefix):
+        self._registry = {}
+        self.mqtt_topic_prefix = mqtt_topic_prefix
+
+    def get_or_create(self, entity_id):
+        entity = self._registry.get(entity_id)
+        if entity is None:
+            entity = self._registry[entity_id] = Entity(
+                entity_id, self.mqtt_topic_prefix
+            )
+        return entity
+
+
+def device_properties(type_name, data):
+    if len(data) > 1 and type_name in consts.DEVICE_CLASS:
+        yield "device_class", consts.DEVICE_CLASS[type_name].get(data[1])
     if len(data) > 2:
-        yield "suggested_display_precision", data[2]
+        yield "state_class", consts.STATE_CLASS.get(data[2])
 
 
 def single_property(name):
-    return lambda node_type, data: [(name, data.decode("utf-8"))]
+    return lambda type_name, data: [(name, data.decode("utf-8"))]
 
 
 CONFIG_PROPERTIES = {
-    0xC: single_property("suggested_unit_of_measurement"),
-    0xD: single_property("unit_of_measurement"),
-    0xE: device_properties,
-    0xF: single_property("name"),
+    consts.PROPERTY_CONFIG: device_properties,
+    consts.PROPERTY_CONFIG_NAME: single_property("name"),
+    consts.PROPERTY_CONFIG_UNIT: single_property("unit_of_measurement"),
 }
+
+
+TOPIC_RE = re.compile("(switch|sensor|binary_sensor)/can_([0-9a-fA-F]{1,7})/(.*)")
 
 
 def parse_topic(topic):
     m = TOPIC_RE.match(topic)
     if m:
-        entity_type, can_id, sub_id, suffix = m.groups()
-        return entity_type, int(can_id, 16), int(sub_id, 16), suffix
+        entity_type, entity_id, suffix = m.groups()
+        return entity_type, int(entity_id, 16), suffix
 
 
-def create_unique_id(node_id, sub_id):
-    return f"can_{node_id:02x}_{sub_id:x}"
+async def configure_entity(message, registry: EntityRegistry, mqtt_client):
+    property_id = message.arbitration_id & 0xF
+    entity_id = message.arbitration_id >> 4
 
+    entity = registry.get_or_create(entity_id)
 
-def create_topic(unique_id, node_type):
-    return f"{MQTT_TOPIC_PREFIX}/{node_type}/{unique_id}"
+    if property_id == consts.PROPERTY_CONFIG:
+        entity.set_type_id(message.data[0])
+        for topic in entity.config_topics_to_invalidate:
+            await mqtt_client.publish(topic, payload=b"", retain=True)
 
-
-def parse_can_message(msg: can.Message):
-    node_id = msg.arbitration_id & 0xFF
-    sub_id = (msg.arbitration_id >> 8) & 0xF
-    node_type = (msg.arbitration_id >> 12) & 0xF
-    property_id = msg.arbitration_id >> 16
-    return (node_id, sub_id, TYPE_TO_NAME.get(node_type), property_id)
-
-
-async def configure_entity(
-    unique_id, node_type, property_id, data, registry, mqtt_client
-):
-    topic = create_topic(unique_id, node_type)
-    if node_type and property_id in CONFIG_PROPERTIES:
-        registry_data = registry[topic]
-        cfg = {}
-        cfg.update(CONFIG_PROPERTIES[property_id](node_type, data))
-        cfg.update(
-            {
-                "unique_id": unique_id,
-                "object_id": unique_id,
-                "state_topic": f"{topic}/state",
-            }
+    if property_id in CONFIG_PROPERTIES and entity.is_ready():
+        entity.update_properties(
+            CONFIG_PROPERTIES[property_id](entity.type_name, message.data)
         )
-        match node_type:
-            case "switch":
-                cfg.update(
-                    {
-                        "assumed_state": False,
-                        "command_topic": f"{topic}/set",
-                    }
-                )
-
-        if any(v != registry_data.get(k) for k, v in cfg.items()):
-            registry_data.update(cfg)
-            logger.info("configuring %s", topic)
-            await mqtt_client.publish(
-                f"{topic}/config", payload=json.dumps(registry_data), retain=True
-            )
+        await mqtt_client.publish(
+            entity.config_topic, payload=json.dumps(entity._properties), retain=True
+        )
+        print(entity.config_topics_to_invalidate)
+    return entity, property_id
 
 
 async def can_reader(reader, mqtt_client, registry):
-    timestamps = defaultdict(float)
-
     while True:
         message = await reader.get_message()
-        node_id = message.arbitration_id & 0xFF
-        last_ts = timestamps[node_id]
-        td = message.timestamp - last_ts
-        if last_ts and td >= 90:
-            logger.warning("too big delay from #%d: %d", node_id, td)
-        timestamps[node_id] = message.timestamp
-
-        node_id, sub_id, node_type, property_id = parse_can_message(message)
-        unique_id = create_unique_id(node_id, sub_id)
-
-        await configure_entity(
-            unique_id, node_type, property_id, message.data, registry, mqtt_client
-        )
-
-        if property_id == 0:
-            topic = create_topic(unique_id, node_type)
-            payload = None
-            match node_type:
-                case "switch":
-                    is_on = message.data and message.data[0]
-                    payload = is_on and "ON" or "OFF"
-                case "binary_sensor":
-                    is_on = message.data and message.data[0]
-                    payload = is_on and "ON" or "OFF"
-                case "sensor":
-                    if len(message.data) == 4:
-                        value = struct.unpack_from("f", message.data)[0]
-                    elif len(message.data) == 8:
-                        value = struct.unpack_from("d", message.data)[0]
-                    else:
-                        continue
-                    payload = str(value)
-            await mqtt_client.publish(f"{topic}/state", payload=payload)
+        entity, property_id = await configure_entity(message, registry, mqtt_client)
+        if entity.is_ready() and property_id == consts.PROPERTY_STATE0:
+            payload = entity.parse_can_payload(message.data)
+            if payload is not None:
+                await mqtt_client.publish(entity.state_topic, payload=payload)
 
 
-async def mqtt_reader(client, bus, registry):
+async def mqtt_reader(client, bus, registry: EntityRegistry):
     async with client.messages() as messages:
-        await client.subscribe(f"{MQTT_TOPIC_PREFIX}/#")
+        await client.subscribe(f"{registry.mqtt_topic_prefix}/#")
         async for message in messages:
-            logger.info("mqtt msg: %s %s", message.topic, message.payload)
-
-            if message.topic.value.endswith("/config"):
-                key = message.topic.value[:-7]
-                registry[key].update(json.loads(message.payload))
-
-            match parse_topic(message.topic.value):
-                case (entity_type, can_id, sub_id, "set"):
-                    arbitration_id = (
-                        can_id
-                        | (sub_id << 8)
-                        | (NAME_TO_TYPE[entity_type] << 12)
-                        | CAN_CMD_BIT
-                    )
-                    match entity_type:
-                        case "switch":
-                            data = b"\x01" if message.payload == b"ON" else b"\x00"
-                        case _:
-                            data = message.payload
-                    can_msg = can.Message(arbitration_id=arbitration_id, data=data)
-                    logger.debug("send can msg: %r", can_msg)
-                    bus.send(can_msg)
+            topic = message.topic.value[len(registry.mqtt_topic_prefix) + 1 :]
+            logger.info("mqtt msg: %s %s", topic, message.payload)
+            match parse_topic(topic):
+                case (type_name, entity_id, "config"):
+                    entity = registry.get_or_create(entity_id)
+                    entity.set_type_name(type_name)
+                    entity.update_properties(json.loads(message.payload))
+                case (entity_type, entity_id, "set"):
+                    arbitration_id = (entity_id << 4) | consts.PROPERTY_CMD0
+                    entity = registry.get_or_create(entity_id)
+                    if entity_type == entity.type_name:
+                        data = entity.parse_mqtt_payload(message.payload)
+                        can_msg = can.Message(arbitration_id=arbitration_id, data=data)
+                        logger.debug("send can msg: %r", can_msg)
+                        bus.send(can_msg)
 
 
-async def start(mqtt_server, interface, channel, bitrate, **kwargs):
+async def start(
+    mqtt_server,
+    interface,
+    channel,
+    bitrate,
+    mqtt_topic_prefix=consts.MQTT_TOPIC_PREFIX,
+    **kwargs,
+):
     with can.Bus(
         interface=interface,
         channel=channel,
@@ -180,11 +215,10 @@ async def start(mqtt_server, interface, channel, bitrate, **kwargs):
     ) as bus:
         async with aiomqtt.Client(mqtt_server) as client:
             loop = asyncio.get_running_loop()
-            registry = defaultdict(dict)
+            registry = EntityRegistry(mqtt_topic_prefix)
             reader = can.AsyncBufferedReader()
             notifier = can.Notifier(bus, [reader], loop=loop)
             await asyncio.gather(
-                can_reader(reader, client, registry),
-                mqtt_reader(client, bus, registry)
+                can_reader(reader, client, registry), mqtt_reader(client, bus, registry)
             )
             notifier.stop()

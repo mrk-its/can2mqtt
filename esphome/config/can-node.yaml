@@ -15,9 +15,9 @@ esphome:
     priority: 500
     then:
       - lambda: |
-          can_configure_switch(id(can_bus), id(blue_led), 1, 0 );
-          can_configure_sensor(id(can_bus), id(uptime_sensor), 1, 0 );
-          can_configure_binary_sensor(id(can_bus), id(boot1), 1, 0 );
+          can_configure_switch(id(can_bus), id(blue_led), 1);
+          can_configure_sensor(id(can_bus), id(uptime_sensor), 2);
+          can_configure_binary_sensor(id(can_bus), id(boot), 3);
 
 canbus:
   - platform: esp32_can
@@ -45,7 +45,7 @@ sensor:
 binary_sensor:
   - platform: gpio
     name: "Boot1"
-    id: boot1
+    id: boot
     pin:
       number: 0
       inverted: true
