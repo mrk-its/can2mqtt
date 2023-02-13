@@ -11,8 +11,8 @@ def main():
         description="CAN to MQTT converter",
     )
     parser.add_argument("-s", "--mqtt-server", default="localhost")
-    parser.add_argument("-i", "--interface", default="seeedstudio")
-    parser.add_argument("-c", "--channel", default="/dev/ttyUSB0")
+    parser.add_argument("-i", "--interface")
+    parser.add_argument("-c", "--channel")
     parser.add_argument("-b", "--bitrate", type=int, default=125000)
     parser.add_argument("-l", "--log-level", default=logging.INFO)
     parser.add_argument("-t", "--mqtt-topic-prefix", default="homeassistant")
