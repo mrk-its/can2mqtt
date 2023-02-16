@@ -20,19 +20,21 @@ It defines three entities: `sensor`, `binary_sensor` and `switch`. These entitie
 
 `can2mqtt` bridge converts CAN frames onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
 
-## Requirements
+## ESP32 configuration
+
+## can2mqtt: requirements
 
 * python >= 3.10
 * any CAN device supported by `python-can`
 
-### Installation
+### can2mqtt: installation
 
 ```
   $ cd can2mqtt
   $ pip install .
 ```
 
-### Running
+### can2mqtt: running
 
 ```
   usage: can2mqtt [-h] [-s MQTT_SERVER] [-i INTERFACE] [-c CHANNEL] [-b BITRATE] [-l LOG_LEVEL] [-t MQTT_TOPIC_PREFIX]
