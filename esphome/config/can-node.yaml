@@ -62,6 +62,7 @@ cover:
   - platform: time_based
     name: "CanCover"
     id: test_cover
+    internal: true
     device_class: shutter
     has_built_in_endstop: true
     open_action:

@@ -7,7 +7,7 @@ This project tries to fill the gap and provides tools for easy exposing ESPHome 
 Simple CAN protocol is defined, describing how to embed information about entity configuration / state change in the CAN frame.
 
 Take a look on example [ESPHome configuration](https://github.com/mrk-its/can2mqtt/tree/main/esphome/config).
-It defines three entities: `sensor`, `binary_sensor` and `switch`. These entitie are marked as `internal`, so they are not exposed to Home Assistant over WIFI. Following `on-boot` lambda code makes these entities available over CAN:
+It defines example entities: `sensor`, `binary_sensor`, `switch` and `cover`. These entitie are marked as `internal`, so they are not exposed to Home Assistant over WIFI. Following `on-boot` lambda code makes these entities available over CAN:
 ```
   on_boot:
     priority: 500
@@ -16,6 +16,7 @@ It defines three entities: `sensor`, `binary_sensor` and `switch`. These entitie
           can_configure_switch(id(can_bus), id(blue_led), 1);
           can_configure_sensor(id(can_bus), id(uptime_sensor), 2);
           can_configure_binary_sensor(id(can_bus), id(boot), 3);
+          can_configure_cover(id(can_bus), id(test_cover), 4 );
 ```
 
 `can2mqtt` bridge converts CAN frames onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
