@@ -18,6 +18,7 @@ esphome:
           can_configure_switch(id(can_bus), id(blue_led), 1);
           can_configure_sensor(id(can_bus), id(uptime_sensor), 2);
           can_configure_binary_sensor(id(can_bus), id(boot), 3);
+          can_configure_cover(id(can_bus), id(test_cover), 4 );
 
 canbus:
   - platform: esp32_can
@@ -56,3 +57,18 @@ switch:
     id: blue_led
     internal: true
     pin: 2
+
+cover:
+  - platform: time_based
+    name: "CanCover"
+    id: test_cover
+    device_class: shutter
+    has_built_in_endstop: true
+    open_action:
+      - logger.log: open_action
+    open_duration: 10s
+    close_action:
+      - logger.log: close_action
+    close_duration: 10s
+    stop_action:
+      - logger.log: stop_action
