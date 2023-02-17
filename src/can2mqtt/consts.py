@@ -24,17 +24,6 @@ ENTITY_TYPE_BINARY_SENSOR = 1
 ENTITY_TYPE_SWITCH = 2
 ENTITY_TYPE_COVER = 3
 
-ENTITY_TYPE_NAME = {
-    ENTITY_TYPE_SENSOR: "sensor",
-    ENTITY_TYPE_BINARY_SENSOR: "binary_sensor",
-    ENTITY_TYPE_SWITCH: "switch",
-    ENTITY_TYPE_COVER: "cover",
-}
-
-SUPPORTED_TYPE_NAMES = list(ENTITY_TYPE_NAME.values())
-
-TYPE_NAME_TO_TYPE = {v: k for k, v in ENTITY_TYPE_NAME.items()}
-
 DEVICE_CLASS = {
     "sensor": {
         1: "apparent_power",

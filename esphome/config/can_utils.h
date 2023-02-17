@@ -68,13 +68,32 @@ void can_send_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entit
 void can_send_switch_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, bool x) {
     std::vector<uint8_t> data = {x};
     can_bus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
-
 }
 
 void can_send_binary_sensor_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, bool x) {
     std::vector<uint8_t> data = {x};
     can_bus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
 };
+
+#pragma pack(push, 1)
+struct CoverState {
+    float position;
+    uint8_t state;
+};
+#pragma pack(pop)
+
+void can_send_cover_state(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, uint8_t state, float pos) {
+
+    CoverState _state = CoverState {
+        pos, state
+    };
+
+    std::vector<uint8_t> data((uint8_t *)&_state, (uint8_t *)(&_state + 1));
+    can_bus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
+    // std::vector<uint8_t> pos_data((uint8_t *)&pos, ((uint8_t *)&pos) + sizeof(pos));
+    // can_bus->send_data(entity_id << 4 | PROPERTY_STATE1, true, pos_data);
+}
+
 
 void can_send_string_prop(esphome::esp32_can::ESP32Can* can_bus, uint32_t entity_id, uint32_t prop, std::string name) {
     std::vector<uint8_t> data(name.begin(), name.end());
@@ -163,4 +182,71 @@ void can_configure_switch(
     }
     can_send_switch_state(can_bus, entity_id, switch_->state);
 
+};
+
+void can_configure_cover(
+    esphome::esp32_can::ESP32Can* can_bus,
+    esphome::cover::Cover* cover,
+    uint32_t entity_id
+) {
+    uint8_t device_class = 0;
+    auto it = COVER_DEVICE_CLASS.find(cover->get_device_class());
+    if(it != COVER_DEVICE_CLASS.end()) {
+        device_class = it->second;
+    }
+    std::vector<uint8_t> data = { ENTITY_TYPE_COVER, device_class };
+    can_bus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);
+    can_send_string_prop(can_bus, entity_id, PROPERTY_CONFIG_NAME, cover->get_name());
+
+    if(!initialized_entities.count(cover->get_object_id())) {
+        cover->add_on_state_callback([can_bus, cover, entity_id]() {
+            // can_send_switch_state(can_bus, entity_id, value);
+            ESP_LOGD("cover", "on_state callback, op: %s, pos: %f", cover_operation_to_str(cover->current_operation), cover->position);
+
+            if(cover->current_operation == COVER_OPERATION_OPENING) {
+                can_send_cover_state(can_bus, entity_id, 1, cover->position);
+            } else if(cover->current_operation == COVER_OPERATION_CLOSING) {
+                can_send_cover_state(can_bus, entity_id, 3, cover->position);
+            } else if(cover->current_operation == COVER_OPERATION_IDLE) {
+                if(cover->position == COVER_CLOSED) {
+                    can_send_cover_state(can_bus, entity_id, 2, cover->position);
+                } else {
+                    can_send_cover_state(can_bus, entity_id, 0, cover->position);
+                }
+            }
+
+        });
+
+        can_cmd_handlers[(entity_id << 4) | PROPERTY_CMD0] = [cover](std::vector<uint8_t> &data) {
+            if(data.size()) {
+                uint8_t cmd = data[0];
+                ESP_LOGD("cover", "cmd: %d", cmd);
+                auto call = cover->make_call();
+                if(cmd == 0) {
+                    call.set_command_stop();
+                    call.perform();
+                } else if(cmd == 1) {
+                    call.set_command_open();
+                    call.perform();
+                } else if(cmd == 2) {
+                    call.set_command_close();
+                    call.perform();
+                }
+            }
+        };
+
+        can_cmd_handlers[(entity_id << 4) | PROPERTY_CMD1] = [cover](std::vector<uint8_t> &data) {
+            if(data.size()) {
+                float position = *(float *)&data[0];
+                ESP_LOGD("cover", "set_position: %f", position);
+                auto call = cover->make_call();
+                call.set_position(position);
+                call.perform();
+            }
+        };
+
+
+        initialized_entities[cover->get_object_id()] = true;
+    }
+    can_send_cover_state(can_bus, entity_id, 0, 0.0);
 };
