@@ -11,6 +11,10 @@ esphome:
   name: can-node-1
   includes:
     - can_utils.h
+    - can_binary_sensor.h
+    - can_switch.h
+    - can_sensor.h
+    - can_cover.h
   on_boot:
     priority: 500
     then:
