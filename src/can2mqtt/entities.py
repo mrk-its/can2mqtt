@@ -274,7 +274,7 @@ class CanStatus(Entity):
     async def mqtt_publish_config(self, mqtt_client):
         for sub_id, name in zip(self.ALL, self.NAMES):
             props = self._properties.copy()
-            props["name"] = f"{props['name']} - {name}" if "name" in props else name
+            props["name"] = name
             props["object_id"] = f"{props['object_id']}_{sub_id}"
             props["unique_id"] = f"{props['unique_id']}_{sub_id}"
             props["state_topic"] = self.get_sensor_state_topic(sub_id)
