@@ -287,32 +287,22 @@ class CanStatus(Entity):
     async def process_can_frame(self, property_id, data, mqtt_client):
         if property_id == consts.PROPERTY_STATE0:
             tx_errors, rx_errors = struct.unpack_from("II", data)
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.TX_ERRORS), payload=str(tx_errors)
-            )
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.RX_ERRORS), payload=str(rx_errors)
-            )
+            await self._publish_state(mqtt_client, self.TX_ERRORS, tx_errors)
+            await self._publish_state(mqtt_client, self.RX_ERRORS, rx_errors)
         elif property_id == consts.PROPERTY_STATE1:
             tx_failed, rx_failed = struct.unpack_from("II", data)
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.TX_FAILED), payload=str(tx_failed)
-            )
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.RX_FAILED), payload=str(rx_failed)
-            )
+            await self._publish_state(mqtt_client, self.TX_FAILED, tx_failed)
+            await self._publish_state(mqtt_client, self.RX_FAILED, rx_failed)
         elif property_id == consts.PROPERTY_STATE2:
             arb_lost, bus_errors = struct.unpack_from("II", data)
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.ARB_LOST), payload=str(arb_lost)
-            )
-            await mqtt_client.publish(
-                self.get_sensor_state_topic(self.BUS_ERRORS), payload=str(bus_errors)
-            )
+            await self._publish_state(mqtt_client, self.ARB_LOST, arb_lost)
+            await self._publish_state(mqtt_client, self.BUS_ERRORS, bus_errors)
 
-            # is_on = data and data[0]
-            # payload = is_on and "ON" or "OFF"
-            # await mqtt_client.publish(self.state_topic, payload=payload)
+    async def _publish_state(self, mqtt_client, id, value):
+        await mqtt_client.publish(
+            self.get_sensor_state_topic(id), payload=str(value), retain=True
+        )
+
 
     @property
     def sensor_base_topic(self):
