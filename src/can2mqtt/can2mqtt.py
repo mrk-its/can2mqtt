@@ -30,7 +30,7 @@ CONFIG_PROPERTIES = {
 }
 
 
-TOPIC_RE = re.compile("(\w+)/can_([0-9a-fA-F]{1,7})/(.*)")
+TOPIC_RE = re.compile("([\w-]+)/can_([0-9a-fA-F]{1,7})/(.*)")
 
 
 def parse_topic(topic):
@@ -57,9 +57,7 @@ async def configure_entity(message, registry: EntityRegistry, mqtt_client):
         entity.update_properties(
             CONFIG_PROPERTIES[property_id](entity.type_name, message.data)
         )
-        await mqtt_client.publish(
-            entity.config_topic, payload=json.dumps(entity._properties), retain=True
-        )
+        await entity.mqtt_publish_config(mqtt_client)
     return entity, property_id
 
 

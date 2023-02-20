@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 import struct
@@ -36,6 +37,11 @@ class Entity:
             else:
                 self._properties.pop(k, None)
 
+    async def mqtt_publish_config(self, mqtt_client):
+        await mqtt_client.publish(
+            self.config_topic, payload=json.dumps(self._properties), retain=True
+        )
+
     @property
     def unique_id(self):
         return self._properties["unique_id"]
@@ -57,7 +63,7 @@ class Entity:
         return f"{self.topic}/config"
 
     def get_config_topic(self, type_name):
-        return f"{self._mqtt_topic_prefix}/{type_name}/{self.unique_id}"
+        return f"{self._mqtt_topic_prefix}/{type_name}/{self.unique_id}/config"
 
     def get_config_topics_to_invalidate(self, supported_type_names):
         return [
@@ -66,12 +72,13 @@ class Entity:
             if type_name != self.type_name
         ]
 
-    def send_can_cmd(self, can_bus, property_id, payload):
+    async def send_can_cmd(self, can_bus, property_id, payload, delay=0.001):
         arbitration_id = (self.entity_id << 4) | (property_id & 0xf)
 
         can_msg = can.Message(arbitration_id=arbitration_id, data=payload)
         logger.debug("send can msg: %r", can_msg)
         can_bus.send(can_msg)
+        await asyncio.sleep(delay)
 
     async def process_mqtt_command(self, cmd, payload, can_bus):
         pass
@@ -141,7 +148,7 @@ class Sensor(Entity):
                 payload = str(struct.unpack_from("d", data)[0])
             else:
                 return
-            await mqtt_client.publish(self.state_topic, payload=payload)
+            await mqtt_client.publish(self.state_topic, payload=payload, retain=True)
 
 
 @EntityRegistry.register
@@ -158,7 +165,7 @@ class BinarySensor(Entity):
         if property_id == consts.PROPERTY_STATE0:
             is_on = data and data[0]
             payload = is_on and "ON" or "OFF"
-            await mqtt_client.publish(self.state_topic, payload=payload)
+            await mqtt_client.publish(self.state_topic, payload=payload, retain=True)
 
 
 @EntityRegistry.register
@@ -177,13 +184,13 @@ class Switch(Entity):
     async def process_mqtt_command(self, cmd, payload, can_bus):
         if cmd == "set":
             can_payload = b"\x01" if payload == b"ON" else b"\x00"
-            self.send_can_cmd(can_bus, consts.PROPERTY_CMD0, can_payload)
+            await self.send_can_cmd(can_bus, consts.PROPERTY_CMD0, can_payload)
 
     async def process_can_frame(self, property_id, data, mqtt_client):
         if property_id == consts.PROPERTY_STATE0:
             is_on = data and data[0]
             payload = is_on and "ON" or "OFF"
-            await mqtt_client.publish(self.state_topic, payload=payload)
+            await mqtt_client.publish(self.state_topic, payload=payload, retain=True)
 
 
 @EntityRegistry.register
@@ -214,12 +221,12 @@ class Cover(Entity):
         if cmd == "set":
             can_cmd = self.CMDS.get(payload)
             if can_cmd is not None:
-                self.send_can_cmd(can_bus, consts.PROPERTY_CMD0, can_cmd)
+                await self.send_can_cmd(can_bus, consts.PROPERTY_CMD0, can_cmd)
             else:
                 logger.warning("unknown MQTT command: %s", payload)
         elif cmd == "set_position":
             can_cmd = struct.pack("f", float(payload) / 100)
-            self.send_can_cmd(can_bus, consts.PROPERTY_CMD1, can_cmd)
+            await self.send_can_cmd(can_bus, consts.PROPERTY_CMD1, can_cmd)
 
     STATES = {
         0: "open",
@@ -235,8 +242,8 @@ class Cover(Entity):
             except struct.error as e:
                 logger.warning("unpack error: %s", e)
                 return
-            await mqtt_client.publish(self.state_topic, payload=self.STATES[state])
-            await mqtt_client.publish(self.position_topic, payload=str(int(pos * 100)))
+            await mqtt_client.publish(self.state_topic, payload=self.STATES[state], retain=True)
+            await mqtt_client.publish(self.position_topic, payload=str(int(pos * 100)), retain=True)
 
     @property
     def position_topic(self):
@@ -245,3 +252,106 @@ class Cover(Entity):
     @property
     def set_position_topic(self):
         return f"{self.topic}/set_position"
+
+@EntityRegistry.register
+class CanStatus(Entity):
+    TYPE_ID = (consts.ENTITY_TYPE_CAN_STATUS, "can-status")
+
+    TX_ERRORS = "tx_errors"
+    RX_ERRORS = "rx_errors"
+    TX_FAILED = "tx_failed"
+    RX_FAILED = "rx_failed"
+    ARB_LOST = "arb_lost"
+    BUS_ERRORS = "bus_errors"
+
+    ALL = (TX_ERRORS, RX_ERRORS, TX_FAILED, RX_FAILED, ARB_LOST, BUS_ERRORS)
+    NAMES = (
+        "TX Error Counter", "RX Error Counter",
+        "TX Failed Count", "RX Failed Count",
+        "Arb Lost Count", "Bus Error Count"
+    )
+
+    async def mqtt_publish_config(self, mqtt_client):
+        for sub_id, name in zip(self.ALL, self.NAMES):
+            props = self._properties.copy()
+            props["name"] = f"{props['name']} - {name}" if "name" in props else name
+            await mqtt_client.publish(
+                self.get_config_topic(sub_id),
+                payload=json.dumps(props),
+                retain=True
+            )
+
+    async def process_can_frame(self, property_id, data, mqtt_client):
+        if property_id == consts.PROPERTY_STATE0:
+            tx_errors, rx_errors = struct.unpack_from("II", data)
+            await mqtt_client.publish(
+                self.get_state_topic(self.TX_ERRORS), payload=str(tx_errors)
+            )
+            await mqtt_client.publish(
+                self.get_state_topic(self.RX_ERRORS), payload=str(rx_errors)
+            )
+        elif property_id == consts.PROPERTY_STATE1:
+            tx_failed, rx_failed = struct.unpack_from("II", data)
+            await mqtt_client.publish(
+                self.get_state_topic(self.TX_FAILED), payload=str(tx_failed)
+            )
+            await mqtt_client.publish(
+                self.get_state_topic(self.RX_FAILED), payload=str(rx_failed)
+            )
+        elif property_id == consts.PROPERTY_STATE2:
+            arb_lost, bus_errors = struct.unpack_from("II", data)
+            await mqtt_client.publish(
+                self.get_state_topic(self.ARB_LOST), payload=str(arb_lost)
+            )
+            await mqtt_client.publish(
+                self.get_state_topic(self.BUS_ERRORS), payload=str(bus_errors)
+            )
+
+            # is_on = data and data[0]
+            # payload = is_on and "ON" or "OFF"
+            # await mqtt_client.publish(self.state_topic, payload=payload)
+
+    def get_state_topic(self, sub_id):
+        return f"{self.topic}_{sub_id}/state"
+
+    def get_config_topic(self, sub_id):
+        return f"{self.topic}_{sub_id}/config"
+
+
+@EntityRegistry.register
+class Ota(Entity):
+    TYPE_ID = (consts.ENTITY_TYPE_OTA, "can-ota")
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self._properties.update(
+            {
+                "command_topic": self.command_topic,
+                "state_topic": self.state_topic,
+            }
+        )
+
+    async def process_mqtt_command(self, cmd, payload, can_bus):
+        if cmd == "set":
+
+            # podzielić całość na fragmenty, każdy po n ramek
+            # wysłać paczkę nagłówka CMD0
+            # offset_start - 20 bitów 2.5 bajta (8-bajtowe jednostki)
+            # length: 12 bitów (w bajtach), 1.5 bajta
+            # crc32 bloku
+
+            # ostatnia paczka: length 0
+
+
+            await self.send_can_cmd(can_bus, consts.PROPERTY_CMD0, b"")
+            for i in range(128):
+                await self.send_can_cmd(can_bus, consts.PROPERTY_CMD1, b"foo12345")
+            await self.send_can_cmd(can_bus, consts.PROPERTY_CMD2, b"")
+
+    async def process_can_frame(self, property_id, data, mqtt_client):
+        if property_id == consts.PROPERTY_STATE0:
+            size, = struct.unpack_from("I", data)
+            await mqtt_client.publish(self.state_topic, payload=str(size))
+            # is_on = data and data[0]
+            # payload = is_on and "ON" or "OFF"
+            # await mqtt_client.publish(self.state_topic, payload=payload)
