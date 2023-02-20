@@ -13,7 +13,7 @@ logger = logging.getLogger("can2mqtt.entities")
 class Entity:
     def __init__(self, entity_id, mqtt_topic_prefix):
         self.entity_id = entity_id
-        unique_id = "can_{:x}".format(entity_id)
+        unique_id = "can_{:06x}".format(entity_id)
         self._mqtt_topic_prefix = mqtt_topic_prefix
 
         self._properties = {
