@@ -75,13 +75,15 @@ async def mqtt_reader(client, bus, registry: EntityRegistry):
         async for message in messages:
             topic = message.topic.value[len(registry.mqtt_topic_prefix) + 1 :]
             logger.info("mqtt msg: %s %s", topic, message.payload)
-            match parse_topic(topic):
-                case (type_name, entity_id, "config"):
+            parsed_topic = parse_topic(topic)
+            if parsed_topic:
+                (type_name, entity_id, cmd) = parsed_topic
+                if cmd == "config":
                     registry.mqtt_configure(type_name, entity_id, message.payload)
-                case (entity_type, entity_id, cmd):
+                else:
                     entity = registry.get(entity_id)
                     if entity is not None:
-                        assert entity_type == entity.type_name
+                        assert type_name == entity.type_name
                         await entity.process_mqtt_command(cmd, message.payload, bus)
                     else:
                         logger.warning("entity %s is not registered yet")

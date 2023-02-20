@@ -4,7 +4,7 @@ version = "0.0.1"
 authors = [
     {name="Mariusz Kryński", email="mrk@sed.pl"}
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 
 dependencies = [
     "python-can",
