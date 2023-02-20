@@ -276,7 +276,7 @@ class CanStatus(Entity):
             props = self._properties.copy()
             props["name"] = f"{props['name']} - {name}" if "name" in props else name
             await mqtt_client.publish(
-                self.get_config_topic(sub_id),
+                self.get_sensor_config_topic(sub_id),
                 payload=json.dumps(props),
                 retain=True
             )
@@ -285,37 +285,41 @@ class CanStatus(Entity):
         if property_id == consts.PROPERTY_STATE0:
             tx_errors, rx_errors = struct.unpack_from("II", data)
             await mqtt_client.publish(
-                self.get_state_topic(self.TX_ERRORS), payload=str(tx_errors)
+                self.get_sensor_state_topic(self.TX_ERRORS), payload=str(tx_errors)
             )
             await mqtt_client.publish(
-                self.get_state_topic(self.RX_ERRORS), payload=str(rx_errors)
+                self.get_sensor_state_topic(self.RX_ERRORS), payload=str(rx_errors)
             )
         elif property_id == consts.PROPERTY_STATE1:
             tx_failed, rx_failed = struct.unpack_from("II", data)
             await mqtt_client.publish(
-                self.get_state_topic(self.TX_FAILED), payload=str(tx_failed)
+                self.get_sensor_state_topic(self.TX_FAILED), payload=str(tx_failed)
             )
             await mqtt_client.publish(
-                self.get_state_topic(self.RX_FAILED), payload=str(rx_failed)
+                self.get_sensor_state_topic(self.RX_FAILED), payload=str(rx_failed)
             )
         elif property_id == consts.PROPERTY_STATE2:
             arb_lost, bus_errors = struct.unpack_from("II", data)
             await mqtt_client.publish(
-                self.get_state_topic(self.ARB_LOST), payload=str(arb_lost)
+                self.get_sensor_state_topic(self.ARB_LOST), payload=str(arb_lost)
             )
             await mqtt_client.publish(
-                self.get_state_topic(self.BUS_ERRORS), payload=str(bus_errors)
+                self.get_sensor_state_topic(self.BUS_ERRORS), payload=str(bus_errors)
             )
 
             # is_on = data and data[0]
             # payload = is_on and "ON" or "OFF"
             # await mqtt_client.publish(self.state_topic, payload=payload)
 
-    def get_state_topic(self, sub_id):
-        return f"{self.topic}_{sub_id}/state"
+    @property
+    def sensor_base_topic(self):
+        return f"{self._mqtt_topic_prefix}/sensor/{self.unique_id}"
 
-    def get_config_topic(self, sub_id):
-        return f"{self.topic}_{sub_id}/config"
+    def get_sensor_state_topic(self, sub_id):
+        return f"{self.sensor_base_topic}_{sub_id}/state"
+
+    def get_sensor_config_topic(self, sub_id):
+        return f"{self.sensor_base_topic}_{sub_id}/config"
 
 
 @EntityRegistry.register
