@@ -105,6 +105,8 @@ class EntityRegistry:
         cls._by_name[_name] = entity_klass
 
     def mqtt_configure(self, type_name, entity_id, payload):
+        if not payload:
+            return
         entity = self._registry.get(entity_id)
         if entity is not None:
             logger.warning("entity %s is already configured, skipping", entity_id)
