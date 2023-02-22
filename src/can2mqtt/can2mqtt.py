@@ -83,8 +83,11 @@ async def mqtt_reader(client, bus, registry: EntityRegistry):
                 else:
                     entity = registry.get(entity_id)
                     if entity is not None:
+                        if type_name == entity.type_name
+                            await entity.process_mqtt_command(cmd, message.payload, bus)
+                        else:
+                            logger.warning("invalid entity type: %s, expected: %s", type_name, entity.type_name)
                         assert type_name == entity.type_name
-                        await entity.process_mqtt_command(cmd, message.payload, bus)
                     else:
                         logger.warning("entity %s is not registered yet")
 
