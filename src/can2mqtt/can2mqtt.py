@@ -88,7 +88,7 @@ async def mqtt_reader(client, bus, registry: EntityRegistry):
                         else:
                             logger.warning("invalid entity type: %s, expected: %s", type_name, entity.type_name)
                     else:
-                        logger.warning("entity %s is not registered yet")
+                        logger.warning("entity for %s is not registered yet", topic)
 
 async def start(
     mqtt_server,
