@@ -109,7 +109,7 @@ class EntityRegistry:
             return
         entity = self._registry.get(entity_id)
         if entity is not None:
-            logger.warning("entity %s is already configured, skipping", entity_id)
+            logger.debug("entity %s is already configured, skipping", entity_id)
             return
 
         entity_klass = self._by_name.get(type_name)
