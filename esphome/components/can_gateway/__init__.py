@@ -1,15 +1,14 @@
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_ID, CONF_OTA, CONF_WIFI
-from esphome.components import sensor
+from esphome.const import CONF_ID
 from esphome.components.canbus import CanbusComponent
-from esphome.components.ota import OTAComponent
-from esphome.components.wifi import WiFiComponent
+
 
 ns = cg.esphome_ns.namespace('can_gateway')
 CanGatewayComponent = ns.class_(
-    'CanGatewayComponent', cg.Component)
-
+    'CanGatewayComponent',
+    cg.Component,
+)
 
 CONF_ENTITIES = "entities"
 

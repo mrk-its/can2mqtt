@@ -55,11 +55,9 @@ namespace esphome {
       optional<Status> status;
 
       public:
-      
-      void set_canbus(canbus::Canbus *canbus) {
-        this->canbus = canbus;
-      }
-      
+
+      void set_canbus(canbus::Canbus *canbus);
+
       float get_setup_priority() {
         return this->canbus->get_setup_priority() - 1.0f;
       }
@@ -97,7 +95,7 @@ namespace esphome {
           std::vector<uint32_t> _data = {cnt1, cnt2};
           std::vector<uint8_t> data((uint8_t *)&_data[0], ((uint8_t *)&_data[0]) + 8);
           canbus->send_data((entity_id << 4) | prop, true, data);
-      };      
+      };
       void loop() override;
     };
   } // namespace can_gateway

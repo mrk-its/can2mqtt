@@ -5,7 +5,7 @@ using namespace esphome::cover;
 
 
 namespace esphome {
-  
+
   namespace can_gateway {
 
     const std::map<std::string, uint8_t> SENSOR_DEVICE_CLASS = {
@@ -27,6 +27,31 @@ namespace esphome {
         {"None", 0}, {"outlet", 1}, {"switch", 2}
     };
 
+    void CanGatewayComponent::set_canbus(canbus::Canbus *canbus) {
+      Automation<std::vector<uint8_t>, uint32_t, bool> *automation;
+      LambdaAction<std::vector<uint8_t>, uint32_t, bool> *lambdaaction;
+      canbus::CanbusTrigger *canbus_canbustrigger;
+
+      this->canbus = canbus;
+
+      canbus_canbustrigger = new canbus::CanbusTrigger(canbus, 0, 0, true);
+      canbus_canbustrigger->set_component_source("canbus");
+      App.register_component(canbus_canbustrigger);
+      automation = new Automation<std::vector<uint8_t>, uint32_t, bool>(canbus_canbustrigger);
+      lambdaaction = new LambdaAction<std::vector<uint8_t>, uint32_t, bool>([=](std::vector<uint8_t> x, uint32_t can_id, bool remote_transmission_request) -> void {
+          this->on_frame(can_id, remote_transmission_request, x);
+      });
+      automation->add_actions({lambdaaction});
+    }
+
+    void CanGatewayComponent::on_frame(uint32_t can_id, bool rtr, std::vector<uint8_t> &data) {
+        // ESP_LOGV(TAG, "id: %x rtr: %d, len: %d", can_id, rtr, data.size());
+        auto it = can_cmd_handlers.find(can_id);
+        if(it != can_cmd_handlers.end()) {
+            it->second(data);
+        }
+    }
+
     void CanGatewayComponent::can_send_config(uint32_t entity_id, uint8_t entity_type, std::string device_class, uint8_t state_class, std::map<std::string, uint8_t> const& device_map ) {
         uint8_t device_class_id = 0;
         auto it = device_map.find(device_class);
@@ -34,7 +59,7 @@ namespace esphome {
             device_class_id = it->second;
         }
         std::vector<uint8_t> data = { entity_type, device_class_id, state_class };
-        canbus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);        
+        canbus->send_data((entity_id << 4) | PROPERTY_CONFIG, true, data);
     }
 
     void CanGatewayComponent::can_send_string_prop(uint32_t entity_id, uint32_t prop, std::string value) {
@@ -83,7 +108,7 @@ namespace esphome {
         canbus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
       });
     }
-    
+
     void CanGatewayComponent::add_entity(esphome::switch_::Switch* switch_, uint32_t entity_id) {
       configure_entity([=]() {
         auto name = switch_->get_name();
@@ -188,14 +213,6 @@ namespace esphome {
 
     }
 
-    void CanGatewayComponent::on_frame(uint32_t can_id, bool rtr, std::vector<uint8_t> &data) {
-        // ESP_LOGV(TAG, "id: %x rtr: %d, len: %d", can_id, rtr, data.size());
-        auto it = can_cmd_handlers.find(can_id);
-        if(it != can_cmd_handlers.end()) {
-            it->second(data);
-        }
-    }
-
     void CanGatewayComponent::loop() {
       if(status.has_value()) {
         struct timeval tv_now;
@@ -222,14 +239,14 @@ namespace esphome {
                 can_send_status_counters(
                     status.value().entity_id, 1,
                     status_info.tx_failed_count, status_info.rx_missed_count
-                );                    
+                );
                 can_send_status_counters(
                     status.value().entity_id, 2,
                     status_info.arb_lost_count, status_info.bus_error_count
                 );
             }
             status.value().last_time = tv_now;
-        } 
+        }
       }
     }
   }
