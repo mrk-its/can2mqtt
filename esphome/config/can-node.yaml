@@ -9,36 +9,30 @@ wifi:
 
 esphome:
   name: can-node-1
-  includes:
-    - can_utils.h
-    - can_binary_sensor.h
-    - can_switch.h
-    - can_sensor.h
-    - can_cover.h
-  on_boot:
-    priority: 500
-    then:
-      - lambda: |
-          can_configure_switch(id(can_bus), id(blue_led), 1);
-          can_configure_sensor(id(can_bus), id(uptime_sensor), 2);
-          can_configure_binary_sensor(id(can_bus), id(boot), 3);
-          can_configure_cover(id(can_bus), id(test_cover), 4 );
+  libraries:
+    #- file:///home/mrk/priv/esphome-can/config/canopen-stack
+    - canopenstack=https://github.com/mrk-its/canopen-stack
+      #- file:///home/mrk/priv/esphome-can/config/cfg
 
-canbus:
-  - platform: esp32_can
-    id: can_bus
-    rx_pin: GPIO22
-    tx_pin: GPIO23
-    can_id: 1
-    bit_rate: 125kbps
-    use_extended_id: true
-
-    on_frame:
-      - can_id: 0
-        can_id_mask: 0
-        use_extended_id: true
-        then:
-          - lambda: can_cmd_message(can_id, remote_transmission_request, x);
+can_gateway:
+  id: can_gate
+  canbus_id: can_bus
+  node_id: 5
+  entities:
+    - id: boot
+      index: 1
+      tpdo: 0
+    - id: blue_led
+      index: 2
+      tpdo: 0
+    - id: cover1
+      index: 5
+      tpdo: 0
+    - id: uptime_sensor
+      index: 3
+      tpdo: 0
+    - id: cover2
+      index: 6
 
 sensor:
   - platform: uptime
@@ -51,6 +45,9 @@ binary_sensor:
   - platform: gpio
     name: "Boot1"
     id: boot
+    internal: true
+    filters:
+      - delayed_off: 2000ms
     pin:
       number: 0
       inverted: true
@@ -62,10 +59,26 @@ switch:
     internal: true
     pin: 2
 
+
 cover:
   - platform: time_based
-    name: "CanCover"
-    id: test_cover
+    name: "Cover1"
+    id: cover1
+    internal: true
+    device_class: shutter
+    has_built_in_endstop: true
+    open_action:
+      - logger.log: open_action
+    open_duration: 10s
+    close_action:
+      - logger.log: close_action
+    close_duration: 10s
+    stop_action:
+      - logger.log: stop_action
+
+  - platform: time_based
+    name: "Cover2"
+    id: cover2
     internal: true
     device_class: shutter
     has_built_in_endstop: true
