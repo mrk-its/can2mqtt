@@ -1,6 +1,8 @@
 #pragma once
 
 #include "esphome.h"
+using namespace esphome;
+
 #include "esphome/core/component.h"
 #include "esphome/components/canbus/canbus.h"
 #include <vector>
@@ -42,14 +44,6 @@ static const char *const TAG = "can_gateway";
 
 namespace esphome {
   namespace can_gateway {
-
-    #pragma pack(push, 1)
-    struct CoverState {
-        float position;
-        uint8_t state;
-    };
-    #pragma pack(pop)
-
     struct Status {
       uint32_t entity_id;
       struct timeval last_time;
@@ -76,10 +70,21 @@ namespace esphome {
       void setup();
 
       // void add_status(uint32_t entity_id, uint32_t update_interval);
+      #ifdef LOG_SENSOR
       void add_entity(sensor::Sensor *sensor, uint32_t entity_id, int8_t tpdo);
+      #endif
+
+      #ifdef LOG_BINARY_SENSOR
       void add_entity(binary_sensor::BinarySensor *sensor, uint32_t entity_id, int8_t tpdo);
+      #endif
+
+      #ifdef LOG_SWITCH
       void add_entity(esphome::switch_::Switch* switch_, uint32_t entity_id, int8_t tpdo);
+      #endif
+
+      #ifdef LOG_COVER
       void add_entity(esphome::cover::Cover* cover, uint32_t entity_id, int8_t tpdo);
+      #endif
 
       void od_add_metadata(
         uint32_t entity_id,
@@ -89,19 +94,11 @@ namespace esphome {
         const std::string &unit,
         uint8_t state_class
       );
-      void od_add_state(uint32_t index, uint32_t subindex, const CO_OBJ_TYPE *type, uint32_t default_value, int8_t tpdo);
-      void od_add_cmd(uint32_t index, uint32_t subindex, uint32_t size, std::function< void(void *, uint32_t)> cb);
+      void od_add_state(uint32_t entity_id, uint32_t key, void *state, uint8_t size, int8_t tpdo);
+      void od_add_cmd(uint32_t entity_id, uint32_t key, std::function< void(void *, uint32_t)> cb);
 
-      void od_set_state(uint32_t index, uint32_t subindex, void *state, uint8_t size);
+      void od_set_state(uint32_t key, void *state, uint8_t size);
       void on_frame(uint32_t can_id, bool rtr, std::vector<uint8_t> &data);
-
-      void can_send_cover_state(uint32_t entity_id, uint8_t state, float pos) {
-          CoverState _state = CoverState {
-              pos, state
-          };
-          std::vector<uint8_t> data((uint8_t *)&_state, (uint8_t *)(&_state + 1));
-          canbus->send_data(entity_id << 4 | PROPERTY_STATE0, true, data);
-      }
 
       void can_send_status_counters(uint32_t entity_id, uint32_t prop, uint32_t cnt1, uint32_t cnt2) {
           std::vector<uint32_t> _data = {cnt1, cnt2};

@@ -25,15 +25,23 @@ static void DrvCanEnable(uint32_t baudrate) {
     ESP_LOGI(TAG, "DrvCanEnable baudrate: %d", baudrate);
 }
 
+char *can_data_str(uint8_t *data, uint8_t len) {
+    static char buf[3 * 8 + 1] = "";
+    for(int i=0; i<len; i++) {
+        sprintf(buf + i*3, " %02x", data[i]);
+    }
+    return buf;
+}
+
 static int16_t DrvCanSend(CO_IF_FRM *frm) {
     if(global_can_gateway && global_can_gateway->canbus) {
         auto len = frm->DLC;
         std::vector<uint8_t> data(frm->Data, frm->Data + len);
-        char data_str[3*8 + 1] = "";
-        for(int i=0; i<data.size(); i++) {
-            sprintf(data_str + i*3, " %02x", data[i]);
-        }
-        ESP_LOGV(TAG, "DrvCanSend id: %03x, len: %d, data:%s", frm->Identifier, data.size(), data_str);
+        ESP_LOGV(
+            TAG,
+            "DrvCanSend id: %03x, len: %d, data:%s",
+            frm->Identifier, len, can_data_str(frm->Data, len)
+        );
         global_can_gateway->canbus->send_data(frm->Identifier, false, data);
         return 0;
     } else {
@@ -45,7 +53,11 @@ static int16_t DrvCanRead (CO_IF_FRM *frm) {
     if(global_can_gateway->recv_frame.has_value()) {
         *frm = global_can_gateway->recv_frame.value();
         global_can_gateway->recv_frame.reset();
-        ESP_LOGV(TAG, "DrvCanRead: frame read");
+        ESP_LOGV(
+            TAG,
+            "DrvCanRead: frame read, id: %03x, len: %d, data:%s",
+            frm->Identifier, frm->DLC, can_data_str(frm->Data, frm->DLC)
+        );
         return sizeof(CO_IF_FRM);
     } else {
         ESP_LOGW(TAG, "DrvCanRead: no frame");

@@ -2,9 +2,6 @@
 #include "esphome.h"
 #include "can_gateway.h"
 
-using namespace esphome::cover;
-
-
 namespace esphome {
   can_gateway::CanGatewayComponent *global_can_gateway = 0;
 
@@ -37,14 +34,13 @@ namespace esphome {
 
       const CO_OBJ_TYPE *uint8 = CO_TUNSIGNED8;
       CO_ERR result = uint8->Write(obj, node, buffer, size);
-      uint32_t index = (obj->Key & 0xffffff00) | size;
+      uint32_t index = obj->Key & 0xffffff00;
 
       auto cmd_handlers = global_can_gateway->can_cmd_handlers;
       auto it = cmd_handlers.find(index);
       if(it != cmd_handlers.end()) {
         it->second(buffer, size);
       }
-
       return result;
     }
 
@@ -55,25 +51,6 @@ namespace esphome {
       Cmd8Write,
     };
     #define CO_TCMD8  ((CO_OBJ_TYPE*)&Cmd8)
-
-    const std::map<std::string, uint8_t> SENSOR_DEVICE_CLASS = {
-        {"None", 0}, {"apparent_power", 1}, {"aqi", 2}, {"atmospheric_pressure", 3}, {"battery", 4}, {"carbon_dioxide", 5},
-        {"carbon_monoxide", 6}, {"current", 7}, {"data_rate", 8}, {"data_size", 9}, {"date", 10}, {"distance", 11},
-        {"duration", 12}, {"energy", 13}, {"enum", 14}, {"frequency", 15}, {"gas", 16}, {"humidity", 17}, {"illuminance", 18},
-        {"irradiance", 19}, {"moisture", 20}, {"monetary", 21}, {"nitrogen_dioxide", 22}, {"nitrogen_monoxide", 23},
-        {"nitrous_oxide", 24}, {"ozone", 25}, {"pm1", 26}, {"pm10", 27}, {"pm25", 28}, {"power_factor", 29}, {"power", 30},
-        {"precipitation", 31}, {"precipitation_intensity", 32}, {"pressure", 33}, {"reactive_power", 34}, {"signal_strength", 35},
-        {"sound_pressure", 36}, {"speed", 37}, {"sulphur_dioxide", 38}, {"temperature", 39}, {"timestamp", 40},
-        {"volatile_organic_compounds", 41}, {"voltage", 42}, {"volume", 43}, {"water", 44}, {"weight", 45}, {"wind_speed", 46}
-    };
-    const std::map<std::string, uint8_t> BINARY_SENSOR_DEVICE_CLASS = {};
-    const std::map<std::string, uint8_t> COVER_DEVICE_CLASS = {
-        {"None", 0}, {"awning", 1}, {"blind", 2}, {"curtain", 3}, {"damper", 4}, {"door", 5}, {"garage", 6}, {"gate", 7}, {"shade", 8}, {"shutter", 9}, {"window", 10}
-    };
-
-    const std::map<std::string, uint8_t> SWITCH_DEVICE_CLASS = {
-        {"None", 0}, {"outlet", 1}, {"switch", 2}
-    };
 
     CO_OBJ_STR *od_string(const std::string &str) {
       auto od_str = new CO_OBJ_STR();
@@ -115,11 +92,6 @@ namespace esphome {
         };
         memcpy(recv_frame.value().Data, &data[0], data.size());
         CONodeProcess(&node);
-
-        // auto it = can_cmd_handlers.find(can_id);
-        // if(it != can_cmd_handlers.end()) {
-        //     it->second(data);
-        // }
     }
 
     uint32_t get_entity_index(uint32_t entity_id) {
@@ -144,94 +116,151 @@ namespace esphome {
     }
 
     void CanGatewayComponent::od_add_state(
-      uint32_t entity_id, uint32_t subidx, const CO_OBJ_TYPE *type, uint32_t default_value, int8_t tpdo
+      uint32_t entity_id, uint32_t key, void *state, uint8_t size, int8_t tpdo
     ) {
-      uint32_t index = get_entity_index(entity_id);
       uint32_t async_pdo_mask = tpdo >=0 ? CO_OBJ___A___ | CO_OBJ____P__ : 0;
-      auto state_obj = ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 1, subidx, async_pdo_mask | CO_OBJ_D___R_), type, (CO_DATA)default_value);
+      uint32_t index = get_entity_index(entity_id);
+
+      uint8_t max_index = 0;
+      auto obj = ODFind(NodeSpec.Dict, CO_DEV(index + 1, 0));
+      if(obj) max_index = obj -> Data;
+      max_index += 1;
+
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 1, max_index, CO_OBJ_D___R_), CO_TUNSIGNED32, key);
+
       if(tpdo >= 0) {
         ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1800 + tpdo, 1, CO_OBJ_DN__R_), CO_TUNSIGNED32, CO_COBID_TPDO_DEFAULT(tpdo));
         ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1800 + tpdo, 2, CO_OBJ_D___R_), CO_TUNSIGNED8, (CO_DATA)254);
 
         uint8_t max_index = 0;
-
         auto obj = ODFind(NodeSpec.Dict, CO_DEV(0x1a00 + tpdo, 0));
         if(obj) max_index = obj->Data;
         max_index += 1;
-        uint32_t bits = type->Size(state_obj, &node, 4) * 8;
-        ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1a00 + tpdo, max_index, CO_OBJ_D___R_), CO_TUNSIGNED32, CO_LINK(index + 1, subidx, bits));
-        ESP_LOGI(TAG, "tpdo: %d, SubIndex: %d, CO_LINK(%x, %x, %x)", tpdo, max_index, index + 1, subidx, bits);
+        uint32_t bits = size * 8;
+        ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1a00 + tpdo, max_index, CO_OBJ_D___R_), CO_TUNSIGNED32, CO_LINK(CO_GET_IDX(key), CO_GET_SUB(key), bits));
+        ESP_LOGI(TAG, "tpdo: %d, SubIndex: %d, CO_LINK(%x, %x, %x)", tpdo, max_index, CO_GET_IDX(key), CO_GET_SUB(key), bits);
       }
     }
 
-    void CanGatewayComponent::od_add_cmd(
-      uint32_t entity_id, uint32_t subindex, uint32_t size, std::function< void(void *, uint32_t)> cb
-    ) {
-      uint32_t index = get_entity_index(entity_id);
-      ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 2, 0, CO_OBJ_D___R_), CO_TUNSIGNED8, (CO_DATA)subindex);
-      // TODO: support for other sizes
-      ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 2, subindex, CO_OBJ_D___RW), CO_TCMD8, (CO_DATA)0);
-      can_cmd_handlers[(CO_DEV(index + 2, 1) & 0xffffff00) | size] = cb;
-    }
-
-    void  CanGatewayComponent::od_set_state(uint32_t entity_id, uint32_t subindex, void *state, uint8_t size) {
-      uint32_t index = get_entity_index(entity_id);
-      auto obj = CODictFind(&node.Dict, CO_DEV(index + 1, 1));
+    void  CanGatewayComponent::od_set_state(uint32_t key, void *state, uint8_t size) {
+      auto obj = CODictFind(&node.Dict, key);
       if(!obj) return;
       if(CO_IS_PDOMAP(obj->Key)) {
         if(initialized) {
           // trigger tpdo
           COObjWrValue(obj, &node, state, size);
         } else {
-          CODictWrBuffer(&node.Dict, CO_DEV(index + 1, 1), (uint8_t *)state, size);
+          CODictWrBuffer(&node.Dict, key, (uint8_t *)state, size);
         }
       } else {
-        CODictWrBuffer(&node.Dict, CO_DEV(index + 1, 1), (uint8_t *)state, size);
+        CODictWrBuffer(&node.Dict, key, (uint8_t *)state, size);
         if(initialized) {
           uint32_t value = size == 1 ? *(uint8_t *)state : (size == 2 ? *(uint16_t *)state : *(uint32_t *)state);
-          CODictWrLong(&node.Dict, CO_DEV(0x3000, 1), CO_DEV(index + 1, subindex) >> 8);
+          CODictWrLong(&node.Dict, CO_DEV(0x3000, 1), key);
           CODictWrLong(&node.Dict, CO_DEV(0x3000, 2), value);
           COTPdoTrigPdo(node.TPdo, 3);
         }
       }
     }
 
+    void CanGatewayComponent::od_add_cmd(
+      uint32_t entity_id, uint32_t key, std::function< void(void *, uint32_t)> cb
+    ) {
+      uint32_t index = get_entity_index(entity_id);
+
+      uint8_t max_index = 0;
+      auto obj = ODFind(NodeSpec.Dict, CO_DEV(index + 2, 0));
+      if(obj) max_index = obj -> Data;
+      max_index += 1;
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 2, max_index, CO_OBJ_D___R_), CO_TUNSIGNED32, key);
+      can_cmd_handlers[key] = cb;
+    }
+
+    uint32_t allocate_state_entry(uint16_t type_id, void *state, uint8_t size, bool tpdo) {
+      uint16_t array_index = type_id + 0x5000;
+      uint8_t subidx = 0;
+      auto obj = ODFind(NodeSpec.Dict, CO_DEV(array_index, 0));
+      if(obj) {
+        subidx = obj->Data;
+      }
+      subidx += 1;
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(array_index, 0, CO_OBJ_D___R_), CO_TUNSIGNED8, subidx);
+      uint32_t key = CO_DEV(array_index, subidx);
+
+      uint32_t async_pdo_mask = tpdo >=0 ? CO_OBJ___A___ | CO_OBJ____P__ : 0;
+      uint32_t default_value = state == 0 ? 0 : (size == 1 ? *(uint8_t *)state : (size == 2 ? *(uint16_t *)state : *(uint32_t *)state));
+      const CO_OBJ_TYPE *type = size == 1 ? CO_TUNSIGNED8 : (size == 2 ? CO_TUNSIGNED16 : CO_TUNSIGNED32);
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(array_index, subidx, async_pdo_mask | CO_OBJ_D___R_), type, (CO_DATA)default_value);
+
+      ESP_LOGD(TAG, "allocated new state entry for type %d: %08x", type_id, key);
+      return key;
+    }
+
+    uint32_t allocate_cmd_entry(uint16_t type_id, uint8_t size) {
+      uint16_t array_index = type_id + 0x5800;
+      uint8_t subidx = 0;
+      auto obj = ODFind(NodeSpec.Dict, CO_DEV(array_index, 0));
+      if(obj) subidx = obj->Data;
+      subidx += 1;
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(array_index, 0, CO_OBJ_D___R_), CO_TUNSIGNED8, subidx);
+      uint32_t key = CO_DEV(array_index, subidx);
+
+      // TODO: CO_TCMD16 / 32
+      const CO_OBJ_TYPE *type = size == 1 ? CO_TCMD8 : (size == 2 ? CO_TCMD8 : CO_TCMD8);
+      ODAddUpdate(NodeSpec.Dict, CO_KEY(array_index, subidx, CO_OBJ_D___RW), type, (CO_DATA)0);
+
+      ESP_LOGD(TAG, "allocated new cmd entry for type %d: %08x", type_id, key);
+      return key;
+    }
+
+
+    #ifdef LOG_SENSOR
     void CanGatewayComponent::add_entity(sensor::Sensor *sensor, uint32_t entity_id, int8_t tpdo) {
+      float state = sensor->get_state();
+      auto state_key = allocate_state_entry(8, &state, 4, tpdo); // allocate new float
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_SENSOR,
         sensor->get_name(), sensor->get_device_class(), "", sensor->get_state_class()
       );
-      od_add_state(entity_id, 1, CO_TUNSIGNED32, sensor->get_state(), tpdo);
+      od_add_state(entity_id, state_key, &state, 4, tpdo);
       sensor->add_on_state_callback([=](float value) {
-        od_set_state(entity_id, 1, &value, 4);
+        od_set_state(state_key, &value, 4);
       });
     }
+    #endif
 
+    #ifdef LOG_BINARY_SENSOR
     void CanGatewayComponent::add_entity(binary_sensor::BinarySensor *sensor, uint32_t entity_id, int8_t tpdo) {
+      auto state_key = allocate_state_entry(1, &sensor->state, 1, tpdo); // allocate new bool
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_BINARY_SENSOR,
         sensor->get_name(), sensor->get_device_class(), "", 0
       );
-      od_add_state(entity_id, 1, CO_TUNSIGNED8, sensor->state, tpdo);
+      od_add_state(entity_id, state_key, &sensor->state, 1, tpdo);
       sensor->add_on_state_callback([=](bool x) {
-        od_set_state(entity_id, 1, &x, 1);
+        od_set_state(state_key, &x, 1);
       });
     }
+    #endif
 
+    #ifdef LOG_SWITCH
     void CanGatewayComponent::add_entity(esphome::switch_::Switch* switch_, uint32_t entity_id, int8_t tpdo) {
+      auto state = switch_->get_initial_state_with_restore_mode().value_or(false);
+      auto state_key = allocate_state_entry(1, &state, 1, tpdo); // allocate new bool
+      auto cmd_key = allocate_cmd_entry(1, 1); // allocate new bool with default=0
+
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_SWITCH,
         switch_->get_name(), switch_->get_device_class(), "", 0
       );
-      auto state = switch_->get_initial_state_with_restore_mode().value_or(false);
-      od_add_state(entity_id, 1, CO_TUNSIGNED8, state, tpdo);
+      od_add_state(entity_id, state_key, &state, 1, tpdo);
       switch_->add_on_state_callback([=](bool value) {
-        od_set_state(entity_id, 1, &value, 1);
+        od_set_state(state_key, &value, 1);
       });
-      od_add_cmd(entity_id, 1, 1, [=](void *buffer, uint32_t size) {
+      od_add_cmd(entity_id, cmd_key, [=](void *buffer, uint32_t size) {
           ESP_LOGI(TAG, "switching to %d", ((uint8_t *)buffer)[0]);
           if(((uint8_t *)buffer)[0]) {
               switch_->turn_on();
@@ -240,23 +269,35 @@ namespace esphome {
           }
       });
     }
+    #endif
+
+    #ifdef LOG_COVER
     uint8_t get_cover_state(esphome::cover::Cover* cover) {
       switch(cover->current_operation) {
-        case cover::COVER_OPERATION_OPENING: return 1;
-        case cover::COVER_OPERATION_CLOSING: return 2;
-        case cover::COVER_OPERATION_IDLE: return cover->position == cover::COVER_CLOSED ? 2 : 0;
+        case esphome::cover::COVER_OPERATION_OPENING: return 1;
+        case esphome::cover::COVER_OPERATION_CLOSING: return 2;
+        case esphome::cover::COVER_OPERATION_IDLE: return cover->position == esphome::cover::COVER_CLOSED ? 2 : 0;
       };
       return 0;
     }
 
     void CanGatewayComponent::add_entity(esphome::cover::Cover* cover, uint32_t entity_id, int8_t tpdo) {
+      uint8_t state = get_cover_state(cover);
+      uint8_t position = uint8_t(cover->position * 255);
+
+      auto state_key = allocate_state_entry(5, &state, 1, tpdo); // allocate new uint8
+      auto pos_key = allocate_state_entry(5, &position, 1, tpdo); // allocate new uint8
+
+      auto state_cmd_key = allocate_cmd_entry(5, 1); // allocate new uint8
+      auto pos_cmd_key = allocate_cmd_entry(5, 1); // allocate new uint8
+
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_COVER,
         cover->get_name(), cover->get_device_class(), "", 0
       );
-      od_add_state(entity_id, 1, CO_TUNSIGNED8, get_cover_state(cover), tpdo);
-      od_add_state(entity_id, 2, CO_TUNSIGNED8, cover->position, tpdo);
+      od_add_state(entity_id, state_key, &state, 1, tpdo);
+      od_add_state(entity_id, pos_key, &position, 1, tpdo);
       cover->add_on_state_callback([=]() {
         ESP_LOGD(
           TAG,
@@ -266,10 +307,10 @@ namespace esphome {
         );
         uint8_t position = uint8_t(cover->position * 255);
         uint8_t state = get_cover_state(cover);
-        od_set_state(entity_id, 1, &state, 1);
-        od_set_state(entity_id, 2, &position, 1);
+        od_set_state(state_key, &state, 1);
+        od_set_state(pos_key, &position, 1);
       });
-      od_add_cmd(entity_id, 1, 1, [=](void *buffer, uint32_t size) {
+      od_add_cmd(entity_id, state_cmd_key, [=](void *buffer, uint32_t size) {
         uint8_t cmd = *(uint8_t *)buffer;
         ESP_LOGD(TAG, "cmd: %d", cmd);
         auto call = cover->make_call();
@@ -284,7 +325,7 @@ namespace esphome {
             call.perform();
         }
       });
-      od_add_cmd(entity_id, 2, 1, [=](void *buffer, uint32_t size) {
+      od_add_cmd(entity_id, pos_cmd_key, [=](void *buffer, uint32_t size) {
         uint8_t cmd = *(uint8_t *)buffer;
         float position = ((float)cmd) / 255.0;
         ESP_LOGD(TAG, "set_position: %f", position);
@@ -293,6 +334,7 @@ namespace esphome {
         call.perform();
       });
     }
+    #endif
 
     // void CanGatewayComponent::add_status(uint32_t entity_id, uint32_t update_interval) {
     //   struct timeval tv_now;
@@ -320,7 +362,7 @@ namespace esphome {
     void CanGatewayComponent::setup() {
       ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1008, 0, CO_OBJ_____R_), CO_TSTRING,     (CO_DATA)(&ManufacturerDeviceNameObj));
 
-      for(uint8_t i=0; i<0; i++) {
+      for(uint8_t i=0; i<4; i++) {
         ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1800 + i, 1, CO_OBJ_DN__R_), CO_TUNSIGNED32, CO_COBID_TPDO_DEFAULT(i));
         ODAddUpdate(NodeSpec.Dict, CO_KEY(0x1800 + i, 2, CO_OBJ_D___R_), CO_TUNSIGNED8, (CO_DATA)254);
       }

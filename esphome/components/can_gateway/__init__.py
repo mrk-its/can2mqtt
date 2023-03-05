@@ -12,6 +12,8 @@ CanGatewayComponent = ns.class_(
 
 CONF_ENTITIES = "entities"
 
+_DEPENDENCIES = ["switch", "cover", "sensor", "binary_sensor"]
+
 ENTITY_SCHEMA = cv.Schema({
     cv.Required("id"): cv.use_id(cg.EntityBase),
     cv.Required("index"): cv.int_,
