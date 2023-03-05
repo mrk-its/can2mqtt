@@ -7,9 +7,10 @@ authors = [
 requires-python = ">=3.8"
 
 dependencies = [
-    "python-can",
+    "canopen@git+https://github.com/sveinse/canopen-asyncio",
     "asyncio-mqtt",
     "pyserial",
+    "coloredlogs",
 ]
 
 [project.scripts]  # Optional

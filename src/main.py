@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import logging
-
+import coloredlogs
 import can2mqtt
 import can
 
@@ -11,6 +11,9 @@ def main():
     default_mqtt_server = config.get("mqtt_server", "localhost")
     default_mqtt_topic = config.get("mqtt_topic", "homeassistant")
     default_bitrate = config.get("bitrate", 125000)
+
+    # patch bug in canopen-async
+    asyncio.iscouroutine = asyncio.iscoroutine
 
     parser = argparse.ArgumentParser(
         prog="can2mqtt",
@@ -24,6 +27,8 @@ def main():
     parser.add_argument("-t", "--mqtt-topic-prefix", default=default_mqtt_topic)
     args = parser.parse_args()
 
-    logging.basicConfig(level=args.log_level)
+    coloredlogs.DEFAULT_LOG_FORMAT = '%(asctime)s %(hostname)s %(name)-18s %(levelname)s %(message)s'
+    coloredlogs.DEFAULT_LEVEL_STYLES.update({'debug': {'color': 0}, 'info': {'color': 'green'}})
+    coloredlogs.install(level=args.log_level)
 
     asyncio.run(can2mqtt.start(**vars(args)))

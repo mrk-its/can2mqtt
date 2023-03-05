@@ -4,10 +4,16 @@ import logging
 import re
 
 import asyncio_mqtt as aiomqtt
-import can
+import canopen
+from canopen.sdo.exceptions import SdoAbortedError
 
 from . import consts
-from .entities import EntityRegistry
+from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
+
+
+CODE_SUBINDEX_NOT_FOUND=0x06090011
+CODE_OBJECT_NOT_FOUND=0x06020000
+
 
 logger = logging.getLogger("can2mqtt.entities")
 
@@ -61,18 +67,130 @@ async def configure_entity(message, registry: EntityRegistry, mqtt_client):
     return entity, property_id
 
 
-async def can_reader(reader, mqtt_client, registry):
+# async def can_reader(reader, mqtt_client, registry):
+#     while True:
+#         message = await reader.get_message()
+#         entity, property_id = await configure_entity(message, registry, mqtt_client)
+#         if entity is not None:
+#             await entity.process_can_frame(property_id, message.data, mqtt_client)
+
+
+async def async_try_iter_items(obj):
+    try:
+        async for key in obj:
+            try:
+                yield key, await obj[key].aget_raw()
+            except SdoAbortedError as e:
+                if e.code == CODE_SUBINDEX_NOT_FOUND:
+                    continue
+                raise
+    except SdoAbortedError as e:
+        if e.code != CODE_OBJECT_NOT_FOUND:
+            raise
+
+
+async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
+    async def on_tptd(map):
+        node_id = map.pdo_node.node.id
+        for v in map.map:
+            key = (v.index << 16) | (v.subindex<<8)
+            entity = StateMixin.get_entity_by_node_state_key(node_id, key)
+            if entity:
+                try:
+                    state_topic, value = entity.get_mqtt_state(key, v.get_raw())
+                    await mqtt_client.publish(state_topic, payload=value, retain=False)
+                    logger.debug("MQTT publish topic: %s value: %s - ok", entity, state_topic, value)
+                except ValueError as e:
+                    logger.error("%s", e)
+            else:
+                logger.warning("no entity for node: %d, key: %08x", node_id, key)
+
     while True:
-        message = await reader.get_message()
-        entity, property_id = await configure_entity(message, registry, mqtt_client)
-        if entity is not None:
-            await entity.process_can_frame(property_id, message.data, mqtt_client)
+        for node_id in can_network.scanner.nodes:
+            if not node_id in can_network:
+                logger.info("found new node_id: %s", node_id)
+                node = can_network.add_node(node_id, 'eds/generic.eds')
+                device_name = await node.sdo["DeviceName"].aget_raw()
+                logger.info("node_id: %s device_name: %s", node_id, device_name)
+                if device_name != "ESPHome":
+                    logger.warning("device %s is not supported, skipping", device_name)
+                    continue
+
+                node = can_network.add_node(node_id, 'eds/esphome.eds')
+
+                logger.info("reading tpdo config")
+                await node.tpdo.aread()
 
 
-async def mqtt_reader(client, bus, registry: EntityRegistry):
-    async with client.messages() as messages:
-        await client.subscribe(f"{registry.mqtt_topic_prefix}/#")
+                async for entity_index, entity_type in async_try_iter_items(node.sdo["EntityTypes"]):
+                    try:
+                        entity = EntityRegistry.create(entity_type, node, entity_index, mqtt_topic_prefix=mqtt_topic_prefix)
+                    except KeyError:
+                        logger.warning("Unknown entity type: %d, index: %d", entity_type, entity_index)
+                        continue
+
+                    base_index = 0x2000 + entity_index * 16
+
+                    if isinstance(entity, StateMixin):
+                        state_map = []
+                        async for key, state_key in async_try_iter_items(node.sdo[base_index+1]):
+                            logger.debug("\t state #%d, key: %08x", key, state_key)
+                            state_map.append(state_key)
+                        entity.setup_state_topics(state_map)
+
+                    if isinstance(entity, CommandMixin):
+                        cmd_map = []
+                        async for key, cmd_key in async_try_iter_items(node.sdo[base_index+2]):
+                            logger.debug("\t cmd $%d, key: %08x", key, cmd_key)
+                            cmd_map.append(cmd_key)
+                        entity.setup_command_topics(cmd_map)
+
+                    PROP_NAMES = {
+                        1: 'name',
+                        2: 'device_class',
+                        3: 'unit',
+                        4: 'state_class',
+                    }
+                    async for key, value in async_try_iter_items(node.sdo[base_index]):
+                        name = PROP_NAMES.get(key)
+                        if name:
+                            logger.debug("\t%s %s: %s", key, value)
+                            entity.set_property(name, value)
+
+                    config_topic = entity.get_mqtt_config_topic()
+                    config_payload = entity.get_mqtt_config()
+                    logger.info("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
+                    await mqtt_client.publish(config_topic, payload=json.dumps(config_payload), retain=False)
+
+                logger.info("state_key map: %r", StateMixin._node_state_key_2_entity)
+
+                for key, map in node.tpdo.map.items():
+                    map.add_callback(on_tptd)
+
+        await asyncio.sleep(1.0)
+
+
+
+async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
+    async with mqtt_client.messages() as messages:
+        await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
+            logger.info("recv mqtt topic: %s %s", message.topic, message.payload)
+            entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)
+            if entity:
+                try:
+                    cmd_key, value = entity.get_can_cmd(message.topic.value, message.payload)
+                    subidx = (cmd_key >> 8) & 255
+                    idx = cmd_key >> 16
+                    var = entity.node.sdo[idx]
+                    if subidx:
+                        var = var[subidx]
+                    await var.aset_raw(value)
+                    logger.info("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
+                except ValueError as e:
+                    logger.error("%s", e)
+            continue
+
             topic = message.topic.value[len(registry.mqtt_topic_prefix) + 1 :]
             logger.info("mqtt msg: %s %s", topic, message.payload)
             parsed_topic = parse_topic(topic)
@@ -98,17 +216,21 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
-    with can.Bus(
-        interface=interface,
-        channel=channel,
-        bitrate=bitrate,
-    ) as bus:
-        async with aiomqtt.Client(mqtt_server) as client:
-            loop = asyncio.get_running_loop()
-            registry = EntityRegistry(mqtt_topic_prefix)
-            reader = can.AsyncBufferedReader()
-            notifier = can.Notifier(bus, [reader], loop=loop)
-            await asyncio.gather(
-                can_reader(reader, client, registry), mqtt_reader(client, bus, registry)
-            )
-            notifier.stop()
+    # with can.Bus(
+    #     interface=interface,
+    #     channel=channel,
+    #     bitrate=bitrate,
+    # ) as bus:
+    async with aiomqtt.Client(mqtt_server) as mqtt_client:
+        can_network = canopen.Network()
+        # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
+        loop = asyncio.get_running_loop()
+        can_network.connect(loop=loop, interface=interface, channel=channel, bitrate=bitrate)
+
+        # registry = EntityRegistry(mqtt_topic_prefix)
+        # reader = can.AsyncBufferedReader()
+        # notifier = can.Notifier(bus, [reader], loop=loop)
+        await asyncio.gather(
+            can_reader(can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix),
+            mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix)
+        )
