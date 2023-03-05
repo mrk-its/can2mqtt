@@ -82,7 +82,6 @@ namespace esphome {
     }
 
     void CanGatewayComponent::on_frame(uint32_t can_id, bool rtr, std::vector<uint8_t> &data) {
-        ESP_LOGI(TAG, "id: %x rtr: %d, len: %d", can_id, rtr, data.size());
         recv_frame = {
           {
             can_id,
@@ -100,7 +99,7 @@ namespace esphome {
 
     void CanGatewayComponent::od_add_metadata(
       uint32_t entity_id, uint8_t type, const std::string &name, const std::string &device_class,
-      const std::string &unit, uint8_t state_class
+      const std::string &unit, const std::string &state_class
     ) {
       uint8_t max_sub=1;
       uint32_t index = get_entity_index(entity_id);
@@ -111,8 +110,8 @@ namespace esphome {
         ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 0, 2, CO_OBJ_____R_), CO_TSTRING, (CO_DATA)od_string(device_class));
       if(unit.size())
         ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 0, 3, CO_OBJ_____R_), CO_TSTRING, (CO_DATA)od_string(unit));
-      if(state_class)
-        ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 0, 4, CO_OBJ_D___R_), CO_TUNSIGNED8, (CO_DATA)state_class);
+      if(state_class.size())
+        ODAddUpdate(NodeSpec.Dict, CO_KEY(index + 0, 4, CO_OBJ_D___R_), CO_TSTRING, (CO_DATA)od_string(state_class));
     }
 
     void CanGatewayComponent::od_add_state(
@@ -221,7 +220,8 @@ namespace esphome {
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_SENSOR,
-        sensor->get_name(), sensor->get_device_class(), "", sensor->get_state_class()
+        sensor->get_name(), sensor->get_device_class(), "",
+        esphome::sensor::state_class_to_string(sensor->get_state_class())
       );
       od_add_state(entity_id, state_key, &state, 4, tpdo);
       sensor->add_on_state_callback([=](float value) {
@@ -236,7 +236,7 @@ namespace esphome {
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_BINARY_SENSOR,
-        sensor->get_name(), sensor->get_device_class(), "", 0
+        sensor->get_name(), sensor->get_device_class(), "", ""
       );
       od_add_state(entity_id, state_key, &sensor->state, 1, tpdo);
       sensor->add_on_state_callback([=](bool x) {
@@ -254,7 +254,7 @@ namespace esphome {
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_SWITCH,
-        switch_->get_name(), switch_->get_device_class(), "", 0
+        switch_->get_name(), switch_->get_device_class(), "", ""
       );
       od_add_state(entity_id, state_key, &state, 1, tpdo);
       switch_->add_on_state_callback([=](bool value) {
@@ -275,7 +275,7 @@ namespace esphome {
     uint8_t get_cover_state(esphome::cover::Cover* cover) {
       switch(cover->current_operation) {
         case esphome::cover::COVER_OPERATION_OPENING: return 1;
-        case esphome::cover::COVER_OPERATION_CLOSING: return 2;
+        case esphome::cover::COVER_OPERATION_CLOSING: return 3;
         case esphome::cover::COVER_OPERATION_IDLE: return cover->position == esphome::cover::COVER_CLOSED ? 2 : 0;
       };
       return 0;
@@ -294,7 +294,7 @@ namespace esphome {
       od_add_metadata(
         entity_id,
         ENTITY_TYPE_COVER,
-        cover->get_name(), cover->get_device_class(), "", 0
+        cover->get_name(), cover->get_device_class(), "", ""
       );
       od_add_state(entity_id, state_key, &state, 1, tpdo);
       od_add_state(entity_id, pos_key, &position, 1, tpdo);

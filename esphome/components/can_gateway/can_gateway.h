@@ -92,7 +92,7 @@ namespace esphome {
         const std::string &name,
         const std::string &device_class,
         const std::string &unit,
-        uint8_t state_class
+        const std::string &state_class
       );
       void od_add_state(uint32_t entity_id, uint32_t key, void *state, uint8_t size, int8_t tpdo);
       void od_add_cmd(uint32_t entity_id, uint32_t key, std::function< void(void *, uint32_t)> cb);
