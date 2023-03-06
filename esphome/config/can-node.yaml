@@ -1,9 +1,19 @@
+
+esphome:
+  name: can-node-1
+  libraries:
+    - canopenstack=https://github.com/mrk-its/canopen-stack
+
+external_components:
+  - source: components
+
 # Enable logging
 logger:
 
 # Enable Home Assistant API
 api:
   password: ""
+  reboot_timeout: 0s
 
 ota:
   password: ""
@@ -16,10 +26,13 @@ esp32:
 wifi:
   <<: !include {file: wifi.yaml}
 
-esphome:
-  name: can-node-1
-  libraries:
-    - canopenstack=https://github.com/mrk-its/canopen-stack
+canbus:
+  - platform: esp32_can
+    id: can_bus
+    rx_pin: GPIO22
+    tx_pin: GPIO23
+    can_id: 0
+    bit_rate: 125kbps
 
 can_gateway:
   id: can_gate

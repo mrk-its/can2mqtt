@@ -2,12 +2,12 @@
 
 ESP32 comes with integrated CAN Bus controller. ESPHome [provides](https://esphome.io/components/canbus.html) low-level support for it (sending / receiving messages from the bus), but it is not able (yet) to automatically expose entities to HomeAssistant over CAN.
 
-This project tries to fill the gap and provides tools for easy exposing ESPHome entities to Home Assistant over CAN Bus.
+This project tries to fill the gap and provides tools for easy exposing ESPHome entities to Home Assistant over CAN Bus:
 
-Simple CAN protocol is defined, describing how to embed information about entity configuration / state changes in the CAN frame.
+* It provides easy to use ESPHome external component called `can_gateway`. It uses CANopen protocol and allows to map selected entities to CANopen Object Dictionary.
+It also allow to define TPDOs for sending entity state on change. Currently following entity types are supported: `sensor`, `binary_sensor`, `switch` and `cover`. Entity metadata is also published in Object Dictionary enabling autodiscovery.
 
-Custom ESPHome component `can_gateway` translates state changes of selected entities onto can frames (and vice versa).
-`can2mqtt` program is bridge converting CAN frames onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
+* It provides also `can2mqtt` program: bridge exposing ESPHome CANopen entities onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
 
 # How to start
 ## Hardware requirements
@@ -21,86 +21,116 @@ Custom ESPHome component `can_gateway` translates state changes of selected enti
   Example configuration for esp32dev board:
 
   ```
-    esphome:
-      name: can-test-node
+  esphome:
+    name: can-node-1
+    libraries:
+      - canopenstack=https://github.com/mrk-its/canopen-stack
 
-    esp32:
-      board: esp32dev
+  external_components:
+    - source: components
 
-    wifi:
-      <<: !include {file: wifi.yaml}
+  # Enable logging
+  logger:
 
-    api:
+  # Enable Home Assistant API
+  api:
+    password: ""
+    reboot_timeout: 0s
+
+  ota:
     password: ""
 
-    ota:
-    password: ""
+  esp32:
+    board: esp32dev
+    framework:
+      type: arduino
 
-    canbus:
-      - platform: esp32_can
-        id: can_bus
-        rx_pin: GPIO22
-        tx_pin: GPIO23
-        can_id: 0
-        bit_rate: 125kbps
+  wifi:
+    <<: !include {file: wifi.yaml}
 
-    external_components:
-      - source: github://mrk-its/can2mqtt
-        refresh: 10s
+  canbus:
+    - platform: esp32_can
+      id: can_bus
+      rx_pin: GPIO22
+      tx_pin: GPIO23
+      can_id: 0
+      bit_rate: 125kbps
 
-    can_gateway:
-      id: can_gate
-      canbus_id: can_bus
-      status:
-        can_id: 0
-      entities:
-        - id: blue_led
-          can_id: 1
-        - id: uptime_sensor
-          can_id: 2
-        - id: boot
-          can_id: 3
-        - id: cover1
-          can_id: 4
+  can_gateway:
+    id: can_gate
+    canbus_id: can_bus
+    node_id: 1
+    entities:
+      - id: boot
+        index: 1
+        tpdo: 0
+      - id: blue_led
+        index: 2
+        tpdo: 0
+      - id: uptime_sensor
+        index: 3
+        tpdo: 0
+      - id: cover1
+        index: 4
+        tpdo: 1
+      - id: cover2
+        index: 5
+        tpdo: 1
 
-    sensor:
-      - platform: uptime
-        id: uptime_sensor
-        name: "Uptime1"
-        update_interval: 5sec
-        internal: true
+  sensor:
+    - platform: uptime
+      id: uptime_sensor
+      name: "Uptime 1"
+      update_interval: 5sec
+      internal: true
 
-    binary_sensor:
-      - platform: gpio
-        name: "Boot1"
-        id: boot
-        internal: true
-        pin:
-          number: 0
-          inverted: true
+  binary_sensor:
+    - platform: gpio
+      name: "Boot 1"
+      id: boot
+      internal: true
+      pin:
+        number: 0
+        inverted: true
 
-    switch:
-      - platform: gpio
-        name: "Led1"
-        id: blue_led
-        internal: true
-        pin: 2
+  switch:
+    - platform: gpio
+      name: "Led 1"
+      id: blue_led
+      internal: true
+      pin: 2
 
-    cover:
-      - platform: time_based
-        name: "Cover1"
-        id: cover1
-        internal: true
-        device_class: shutter
-        has_built_in_endstop: true
-        open_action:
-          - logger.log: open_action
-        open_duration: 5s
-        close_action:
-          - logger.log: close_action
-        close_duration: 5s
-        stop_action:
-          - logger.log: stop_action
+  cover:
+    - platform: time_based
+      name: "Cover 1"
+      id: cover1
+      internal: true
+      device_class: shutter
+      has_built_in_endstop: true
+      open_action:
+        - logger.log: open_action
+      open_duration: 10s
+      close_action:
+        - logger.log: close_action
+      close_duration: 10s
+      stop_action:
+        - logger.log: stop_action
+
+    - platform: time_based
+      name: "Cover 2"
+      id: cover2
+      internal: true
+      device_class: shutter
+      has_built_in_endstop: true
+      open_action:
+        - logger.log: open_action
+      open_duration: 10s
+      close_action:
+        - logger.log: close_action
+      close_duration: 10s
+      stop_action:
+        - logger.log: stop_action
+
   ```
 
 ## Install `can2mqtt` bridge
