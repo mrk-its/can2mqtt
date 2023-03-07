@@ -117,6 +117,7 @@ class Entity:
         cfg = {
             "object_id": self.unique_id,
             "entity_id": self.unique_id,
+            "unique_id": self.unique_id,
         }
         cfg.update(self.STATIC_PROPS)
         cfg.update(self.props)

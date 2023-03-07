@@ -1,11 +1,9 @@
 
 esphome:
   name: can-node-1
-  libraries:
-    - canopenstack=https://github.com/mrk-its/canopen-stack
 
 external_components:
-  - source: components
+  - source: github://mrk-its/esphome-canopen
 
 # Enable logging
 logger:
@@ -34,7 +32,7 @@ canbus:
     can_id: 0
     bit_rate: 125kbps
 
-can_gateway:
+canopen:
   id: can_gate
   canbus_id: can_bus
   node_id: 1

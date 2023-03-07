@@ -4,10 +4,8 @@ ESP32 comes with integrated CAN Bus controller. ESPHome [provides](https://espho
 
 This project tries to fill the gap and provides tools for easy exposing ESPHome entities to Home Assistant over CAN Bus:
 
-* It provides easy to use ESPHome external component called `can_gateway`. It uses CANopen protocol and allows to map selected entities to CANopen Object Dictionary.
-It also allow to define TPDOs for sending entity state on change. Currently following entity types are supported: `sensor`, `binary_sensor`, `switch` and `cover`. Entity metadata is also published in Object Dictionary enabling autodiscovery.
-
-* It provides also `can2mqtt` program: bridge exposing ESPHome CANopen entities onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
+* It provides `can2mqtt` bridge exposing ESPHome CANopen entities onto MQTT topics. It follows MQTT Discovery protocol, so entities appear automatically in HomeAssistant.
+* The [esphome-canopen](https://github.com/mrk-its/esphome-canopen) project converts ESPHome device into CANopen node, exporting selected entities over can by maapping them to CANopen object dictionary. It also allows to define TPDOs for sending entity state on change. Currently following entity types are supported: `sensor`, `binary_sensor`, `switch` and `cover`. Entity metadata is also published in Object Dictionary enabling autodiscovery.
 
 # How to start
 ## Hardware requirements
@@ -23,11 +21,9 @@ It also allow to define TPDOs for sending entity state on change. Currently foll
   ```
   esphome:
     name: can-node-1
-    libraries:
-      - canopenstack=https://github.com/mrk-its/canopen-stack
 
   external_components:
-    - source: components
+    - source: github://mrk-its/esphome-canopen
 
   # Enable logging
   logger:
@@ -56,7 +52,7 @@ It also allow to define TPDOs for sending entity state on change. Currently foll
       can_id: 0
       bit_rate: 125kbps
 
-  can_gateway:
+  canopen:
     id: can_gate
     canbus_id: can_bus
     node_id: 1
@@ -169,7 +165,7 @@ included in python-can configuration file, like:
 ```
 
 If CAN Bus communication is working properly you should see on stdout received CAN frames and data published to MQTT topics.
-In HomeAssistant you should see new entities like `switch.can_000001`
+In HomeAssistant you should see new entities like `switch.can_001_02`
 
 
 ## Protocol overview
