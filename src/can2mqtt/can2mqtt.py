@@ -185,7 +185,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     var = entity.node.sdo[idx]
                     if subidx:
                         var = var[subidx]
-                    await var.aset_raw(value)
+                    asyncio.create_task(var.aset_raw(value))
                     logger.info("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
                 except ValueError as e:
                     logger.error("%s", e)
