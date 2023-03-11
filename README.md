@@ -51,3 +51,7 @@ included in python-can configuration file, like:
 If CAN Bus communication is working properly you should see on stdout received CAN frames and data published to MQTT topics.
 In HomeAssistant you should see new entities like `switch.can_001_02`
 
+# Support
+
+* [Discord Server](https://discord.gg/f5UTFFnp)
+
