@@ -67,14 +67,6 @@ async def configure_entity(message, registry: EntityRegistry, mqtt_client):
     return entity, property_id
 
 
-# async def can_reader(reader, mqtt_client, registry):
-#     while True:
-#         message = await reader.get_message()
-#         entity, property_id = await configure_entity(message, registry, mqtt_client)
-#         if entity is not None:
-#             await entity.process_can_frame(property_id, message.data, mqtt_client)
-
-
 async def async_try_iter_items(obj):
     try:
         async for key in obj:
@@ -187,24 +179,6 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     logger.info("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
                 except ValueError as e:
                     logger.error("%s", e)
-            continue
-
-            topic = message.topic.value[len(registry.mqtt_topic_prefix) + 1 :]
-            logger.info("mqtt msg: %s %s", topic, message.payload)
-            parsed_topic = parse_topic(topic)
-            if parsed_topic:
-                (type_name, entity_id, cmd) = parsed_topic
-                if cmd == "config":
-                    registry.mqtt_configure(type_name, entity_id, message.payload)
-                else:
-                    entity = registry.get(entity_id)
-                    if entity is not None:
-                        if type_name == entity.type_name:
-                            await entity.process_mqtt_command(cmd, message.payload, bus)
-                        else:
-                            logger.warning("invalid entity type: %s, expected: %s", type_name, entity.type_name)
-                    else:
-                        logger.warning("entity for %s is not registered yet", topic)
 
 async def start(
     mqtt_server,
