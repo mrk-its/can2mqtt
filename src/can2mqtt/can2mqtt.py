@@ -188,20 +188,11 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
-    # with can.Bus(
-    #     interface=interface,
-    #     channel=channel,
-    #     bitrate=bitrate,
-    # ) as bus:
     async with aiomqtt.Client(mqtt_server) as mqtt_client:
         can_network = canopen.Network()
         # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
         loop = asyncio.get_running_loop()
         can_network.connect(loop=loop, interface=interface, channel=channel, bitrate=bitrate)
-
-        # registry = EntityRegistry(mqtt_topic_prefix)
-        # reader = can.AsyncBufferedReader()
-        # notifier = can.Notifier(bus, [reader], loop=loop)
         await asyncio.gather(
             can_reader(can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix),
             mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix)
