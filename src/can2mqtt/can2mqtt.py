@@ -160,12 +160,24 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
         await asyncio.sleep(1.0)
 
 
+async def can_test_upload(can_network, node_id, payload):
+    node = can_network.get(node_id)
+    if node:
+        await node.sdo.adownload(0x3000, 2, payload)
+        logger.info("successfuly uploaded %d bytes", len(payload))
+    else:
+        logger.warning("node %s doesn't exist", node_id)
+
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
+    UPLOAD_RE = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/upload")
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
-            logger.info("recv mqtt topic: %s %s", message.topic, message.payload)
+            if len(message.payload) < 20:
+                logger.info("recv mqtt topic: %s %s", message.topic, message.payload)
+            else:
+                logger.info("recv mqtt topic: %s payload len: %s", message.topic, len(message.payload))
             entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)
             if entity:
                 try:
@@ -179,6 +191,11 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     logger.info("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
                 except ValueError as e:
                     logger.error("%s", e)
+            else:
+                m = UPLOAD_RE.match(message.topic.value)
+                if m:
+                    node_id = int(m.group(1))
+                    asyncio.create_task(can_test_upload(can_network, node_id, message.payload))
 
 async def start(
     mqtt_server,
@@ -195,5 +212,5 @@ async def start(
         can_network.connect(loop=loop, interface=interface, channel=channel, bitrate=bitrate)
         await asyncio.gather(
             can_reader(can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix),
-            mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix)
+            mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix),
         )
