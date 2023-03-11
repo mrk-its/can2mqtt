@@ -109,14 +109,12 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
         for node_id in can_network.scanner.nodes:
             if not node_id in can_network:
                 logger.info("found new node_id: %s", node_id)
-                node = can_network.add_node(node_id, 'eds/generic.eds')
+                node = can_network.add_node(node_id, 'eds/esphome.eds')
                 device_name = await node.sdo["DeviceName"].aget_raw()
                 logger.info("node_id: %s device_name: %s", node_id, device_name)
                 if device_name != "ESPHome":
                     logger.warning("device %s is not supported, skipping", device_name)
                     continue
-
-                node = can_network.add_node(node_id, 'eds/esphome.eds')
 
                 logger.info("reading tpdo config")
                 await node.tpdo.aread()
