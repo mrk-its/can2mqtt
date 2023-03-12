@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+import hashlib
 
 import asyncio_mqtt as aiomqtt
 import canopen
@@ -163,14 +164,18 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 async def can_test_upload(can_network, node_id, payload):
     node = can_network.get(node_id)
     if node:
-        await node.sdo.adownload(0x3000, 2, payload)
+        firmware = node.sdo['Firmware']
+        await firmware['Firmware Size'].aset_raw(len(payload))
+        await firmware['Firmware MD5'].aset_raw(hashlib.md5(payload).digest())
+        await firmware['Firmware Data'].aset_raw(payload)
+        # await node.sdo.adownload(0x3000, 4, payload)
         logger.info("successfuly uploaded %d bytes", len(payload))
     else:
         logger.warning("node %s doesn't exist", node_id)
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
-    UPLOAD_RE = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/upload")
+    UPLOAD_RE = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/firmware")
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
