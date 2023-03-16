@@ -163,16 +163,18 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 
 
 async def can_test_upload(can_network, node_id, payload):
-    node = can_network.get(node_id)
-    if node:
-        firmware = node.sdo['Firmware']
-        await firmware['Firmware Size'].aset_raw(len(payload))
-        await firmware['Firmware MD5'].aset_raw(hashlib.md5(payload).digest())
-        await firmware['Firmware Data'].aset_raw(payload)
-        # await node.sdo.adownload(0x3000, 4, payload)
-        logger.info("successfuly uploaded %d bytes", len(payload))
-    else:
-        logger.warning("node %s doesn't exist", node_id)
+    try:
+        node = can_network.get(node_id)
+        if node:
+            firmware = node.sdo['Firmware']
+            await firmware['Firmware Size'].aset_raw(len(payload))
+            await firmware['Firmware MD5'].aset_raw(hashlib.md5(payload).digest())
+            await firmware['Firmware Data'].aset_raw(payload)
+            logger.info("successfuly uploaded %d bytes", len(payload))
+        else:
+            logger.warning("node %s doesn't exist", node_id)
+    except Exception as e:
+        logger.exception("firmware update error: %s", e)
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
