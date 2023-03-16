@@ -92,7 +92,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 try:
                     state_topic, value = entity.get_mqtt_state(key, v.get_raw())
                     await mqtt_client.publish(state_topic, payload=value, retain=False)
-                    logger.debug("MQTT publish topic: %s value: %s - ok", entity, state_topic, value)
+                    logger.debug("MQTT publish topic: %s value: %s - ok", state_topic, value)
                 except ValueError as e:
                     logger.error("%s", e)
             else:
@@ -145,7 +145,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     async for key, value in async_try_iter_items(node.sdo[base_index]):
                         name = PROP_NAMES.get(key)
                         if name:
-                            logger.debug("\t%s %s: %s", key, value)
+                            logger.debug("\t%s %s: %s", name, key, value)
                             entity.set_property(name, value)
 
                     config_topic = entity.get_mqtt_config_topic()
