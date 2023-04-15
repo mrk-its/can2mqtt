@@ -180,6 +180,22 @@ class Switch(StateMixin, CommandMixin, Entity):
 
 
 @EntityRegistry.register
+class Light(StateMixin, CommandMixin, Entity):
+    TYPE_ID = 5
+    TYPE_NAME = "light"
+
+    STATE_SERIALIZERS = [
+        bool2onoff
+    ]
+    COMMAND_PARSERS = [
+        onoff2bool
+    ]
+    STATIC_PROPS = {
+        "assumed_state": False
+    }
+
+
+@EntityRegistry.register
 class Cover(StateMixin, CommandMixin, Entity):
     TYPE_ID = 4
     TYPE_NAME = "cover"
