@@ -149,10 +149,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                             logger.debug("\t%s %s: %s", name, key, value)
                             entity.set_property(name, value)
 
-                    config_topic = entity.get_mqtt_config_topic()
-                    config_payload = entity.get_mqtt_config()
-                    logger.info("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
-                    await mqtt_client.publish(config_topic, payload=json.dumps(config_payload), retain=False)
+                    await entity.publish_config(mqtt_client)
 
                 logger.info("state_key map: %r", StateMixin._node_state_key_2_entity)
 
@@ -186,6 +183,13 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                 logger.info("recv mqtt topic: %s %s", message.topic, message.payload)
             else:
                 logger.info("recv mqtt topic: %s payload len: %s", message.topic, len(message.payload))
+
+            if message.topic.value == f"{mqtt_topic_prefix}/status":
+                if message.payload == b"online":
+                    for entity in Entity.entities():
+                        await entity.publish_config(mqtt_client)
+                continue
+
             entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)
             if entity:
                 try:

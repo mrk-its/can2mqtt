@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+import json
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class CommandMixin:
         return cmd_key, self.COMMAND_PARSERS[index](value)
 
 class Entity:
+    _entities = {}
     NAME_PROP = 1
     TYPE_ID = None
     STATIC_PROPS = {}
@@ -106,6 +108,17 @@ class Entity:
         # TODO: add some canbus id part to allow for many can busses
         self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
         self.props = {}
+        self._entities[self.unique_id] = self
+
+    @classmethod
+    def entities(cls):
+        return cls._entities.values()
+
+    async def publish_config(self, mqtt_client):
+        config_topic = self.get_mqtt_config_topic()
+        config_payload = self.get_mqtt_config()
+        logger.info("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
+        await mqtt_client.publish(config_topic, payload=json.dumps(config_payload), retain=False)
 
     def set_property(self, key, value):
         self.props[key] = value
