@@ -184,11 +184,23 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
+    STATE_TOPICS = [
+        "state_topic",
+        "brightness_state_topic",
+    ]
+
+    COMMAND_TOPICS = [
+        "command_topic",
+        "brightness_command_topic",
+    ]
+
     STATE_SERIALIZERS = [
-        bool2onoff
+        bool2onoff,
+        lambda pos: str(pos)
     ]
     COMMAND_PARSERS = [
-        onoff2bool
+        onoff2bool,
+        lambda pos: int(pos)
     ]
     STATIC_PROPS = {
         "assumed_state": False
