@@ -205,6 +205,38 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a00sub5]
+ParameterName=TPDO0 mapping information 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub6]
+ParameterName=TPDO0 mapping information 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub7]
+ParameterName=TPDO0 mapping information 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub8]
+ParameterName=TPDO0 mapping information 8
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1a01]
 ParameterName=TPDO1 mapping parameter
 ObjectType=9
@@ -246,6 +278,38 @@ DefaultValue=0
 
 [1a01sub4]
 ParameterName=TPDO1 mapping information 4
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub5]
+ParameterName=TPDO1 mapping information 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub6]
+ParameterName=TPDO1 mapping information 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub7]
+ParameterName=TPDO1 mapping information 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub8]
+ParameterName=TPDO1 mapping information 8
 ObjectType=7
 DataType=7
 AccessType=RW
@@ -299,6 +363,38 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a02sub5]
+ParameterName=TPDO2 mapping information 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub6]
+ParameterName=TPDO2 mapping information 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub7]
+ParameterName=TPDO2 mapping information 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub8]
+ParameterName=TPDO2 mapping information 8
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1a03]
 ParameterName=TPDO3 mapping parameter
 ObjectType=9
@@ -340,6 +436,38 @@ DefaultValue=0
 
 [1a03sub4]
 ParameterName=TPDO3 mapping information 4
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub5]
+ParameterName=TPDO3 mapping information 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub6]
+ParameterName=TPDO3 mapping information 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub7]
+ParameterName=TPDO3 mapping information 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub8]
+ParameterName=TPDO3 mapping information 8
 ObjectType=7
 DataType=7
 AccessType=RW

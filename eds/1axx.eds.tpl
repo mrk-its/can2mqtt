@@ -44,3 +44,35 @@ DataType=7
 AccessType=RW
 PDOMapping=0
 DefaultValue=0
+
+[1a0${TPDO}sub5]
+ParameterName=TPDO${TPDO} mapping information 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub6]
+ParameterName=TPDO${TPDO} mapping information 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub7]
+ParameterName=TPDO${TPDO} mapping information 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub8]
+ParameterName=TPDO${TPDO} mapping information 8
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
