@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     coloredlogs.DEFAULT_LOG_FORMAT = '%(asctime)s %(hostname)s %(name)-18s %(levelname)s %(message)s'
-    coloredlogs.DEFAULT_LEVEL_STYLES.update({'debug': {'color': 0}, 'info': {'color': 'green'}})
+    coloredlogs.DEFAULT_LEVEL_STYLES.update({'debug': {'color': 8}, 'info': {'color': 'green'}})
     coloredlogs.install(level=args.log_level)
 
     asyncio.run(can2mqtt.start(**vars(args)))
