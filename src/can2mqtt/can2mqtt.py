@@ -102,7 +102,6 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
     while True:
         for node_id in can_network.scanner.nodes:
             if not node_id in can_network:
-                logger.info("found new node_id: %s", node_id)
                 od = import_od('eds/esphome.eds')
                 node = can_network.add_node(node_id, od)
                 node.sdo.MAX_RETRIES = 3
@@ -115,9 +114,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 async for entity_index, entity_type in async_try_iter_items(node.sdo["EntityTypes"]):
                     try:
                         entity = EntityRegistry.create(entity_type, node, entity_index, mqtt_topic_prefix=mqtt_topic_prefix)
-                        logger.info("entity: %r entity_type: %s", entity, entity_type)
+                        logger.info("  entity: %r", entity)
                     except KeyError:
-                        logger.warning("Unknown entity type: %d, index: %d", entity_type, entity_index)
+                        logger.warning("  Unknown entity type: %d, index: %d", entity_type, entity_index)
                         continue
 
                     base_index = 0x2000 + entity_index * 16
