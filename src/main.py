@@ -7,6 +7,7 @@ import can
 
 
 def main():
+    logging.getLogger("canopen.pdo.base").level = logging.WARNING
     config = can.util.load_config()
     default_mqtt_server = config.get("mqtt_server", "localhost")
     default_mqtt_topic = config.get("mqtt_topic", "homeassistant")

@@ -7,6 +7,7 @@ import hashlib
 import asyncio_mqtt as aiomqtt
 import canopen
 from canopen.sdo.exceptions import SdoAbortedError
+from canopen.objectdictionary import ObjectDictionary, import_od, datatypes, Record, Variable
 
 from . import consts
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
@@ -102,7 +103,8 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
         for node_id in can_network.scanner.nodes:
             if not node_id in can_network:
                 logger.info("found new node_id: %s", node_id)
-                node = can_network.add_node(node_id, 'eds/esphome.eds')
+                od = import_od('eds/esphome.eds')
+                node = can_network.add_node(node_id, od)
                 node.sdo.MAX_RETRIES = 3
                 device_name = await node.sdo["DeviceName"].aget_raw()
                 logger.info("node_id: %s device_name: %s", node_id, device_name)
@@ -110,31 +112,36 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     logger.warning("device %s is not supported, skipping", device_name)
                     continue
 
-                logger.info("reading tpdo config")
-                await node.tpdo.aread()
-
-
                 async for entity_index, entity_type in async_try_iter_items(node.sdo["EntityTypes"]):
                     try:
                         entity = EntityRegistry.create(entity_type, node, entity_index, mqtt_topic_prefix=mqtt_topic_prefix)
+                        logger.info("entity: %r entity_type: %s", entity, entity_type)
                     except KeyError:
                         logger.warning("Unknown entity type: %d, index: %d", entity_type, entity_index)
                         continue
 
                     base_index = 0x2000 + entity_index * 16
+                    node.object_dictionary[base_index + 1] = Record("states", base_index + 1)
+                    node.object_dictionary[base_index + 2] = Record("cmds", base_index + 2)
 
                     if isinstance(entity, StateMixin):
                         state_map = []
-                        async for key, state_key in async_try_iter_items(node.sdo[base_index+1]):
-                            logger.debug("\t state #%d, key: %08x", key, state_key)
-                            state_map.append(state_key)
+                        index = base_index + 1
+                        for sub, (_, _, _type) in enumerate(entity.STATES, 1):
+                            v = Variable("state", index, sub)
+                            v.data_type = _type
+                            node.object_dictionary[index].add_member(v)
+                            state_map.append((index << 16) | (sub << 8))
                         entity.setup_state_topics(state_map)
 
                     if isinstance(entity, CommandMixin):
                         cmd_map = []
-                        async for key, cmd_key in async_try_iter_items(node.sdo[base_index+2]):
-                            logger.debug("\t cmd $%d, key: %08x", key, cmd_key)
-                            cmd_map.append(cmd_key)
+                        index = base_index + 2
+                        for sub, (_, _, _type) in enumerate(entity.COMMANDS, 1):
+                            v = Variable("cmd", index, sub)
+                            v.data_type = _type
+                            node.object_dictionary[index].add_member(v)
+                            cmd_map.append((index << 16) | (sub << 8))
                         entity.setup_command_topics(cmd_map)
 
                     PROP_NAMES = {
@@ -151,7 +158,8 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 
                     await entity.publish_config(mqtt_client)
 
-                logger.info("state_key map: %r", StateMixin._node_state_key_2_entity)
+                logger.debug("reading tpdo config")
+                await node.tpdo.aread()
 
                 for key, map in node.tpdo.map.items():
                     map.add_callback(on_tptd)
@@ -180,9 +188,9 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
             if len(message.payload) < 20:
-                logger.info("recv mqtt topic: %s %s", message.topic, message.payload)
+                logger.debug("recv mqtt topic: %s %s", message.topic, message.payload)
             else:
-                logger.info("recv mqtt topic: %s payload len: %s", message.topic, len(message.payload))
+                logger.debug("recv mqtt topic: %s payload len: %s", message.topic, len(message.payload))
 
             if message.topic.value == f"{mqtt_topic_prefix}/status":
                 if message.payload == b"online":

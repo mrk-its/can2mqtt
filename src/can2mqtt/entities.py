@@ -1,3 +1,4 @@
+from canopen.objectdictionary import datatypes
 from collections import defaultdict
 import logging
 import json
@@ -17,12 +18,8 @@ class StateMixin:
 
     _node_state_key_2_entity = defaultdict(dict)
 
-    STATE_TOPICS = [
-        "state_topic"
-    ]
-
-    STATE_SERIALIZERS = [
-        str
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED8),
     ]
 
     state_map = None
@@ -33,14 +30,14 @@ class StateMixin:
 
     def setup_state_topics(self, state_map):
         self.state_map = state_map
-        logger.info("setup state topics for %s, %s", self, state_map)
+        logger.debug("setup state topics for %s, %s", self, state_map)
         for state_key in self.state_map:
             self._node_state_key_2_entity[self.node.id][state_key] = self
 
     def get_mqtt_config(self):
         config = super(StateMixin, self).get_mqtt_config()
-        assert len(self.STATE_TOPICS) == len(self.state_map)
-        for topic, state_key in zip(self.STATE_TOPICS, self.state_map):
+        assert len(self.STATES) == len(self.state_map)
+        for (topic, *_), state_key in zip(self.STATES, self.state_map):
             config[topic] = self.get_mqtt_state_topic(state_key)
         return config
 
@@ -49,17 +46,14 @@ class StateMixin:
 
     def get_mqtt_state(self, state_key, value):
         index = self.state_map.index(state_key)
-        return self.get_mqtt_state_topic(state_key), self.STATE_SERIALIZERS[index](value)
+        return self.get_mqtt_state_topic(state_key), self.STATES[index][1](value)
 
 
 class CommandMixin:
     _mqtt_cmd_topic2entity = dict()
 
-    COMMAND_TOPICS = [
-        "command_topic"
-    ]
-    COMMAND_PARSERS = [
-        int
+    COMMANDS = [
+        ("command_topic", int, datatypes.UNSIGNED8),
     ]
     command_map = None
     _topic2cmdkey = None
@@ -75,12 +69,11 @@ class CommandMixin:
             topic = self.get_mqtt_command_topic(cmd_key)
             self._mqtt_cmd_topic2entity[topic] = self
             self._topic2cmdkey[topic] = cmd_key
-        logger.info(self._mqtt_cmd_topic2entity)
 
     def get_mqtt_config(self):
         config = super(CommandMixin, self).get_mqtt_config()
-        assert len(self.COMMAND_TOPICS) == len(self.command_map)
-        for topic, cmd_key in zip(self.COMMAND_TOPICS, self.command_map):
+        assert len(self.COMMANDS) == len(self.command_map)
+        for (topic, *_), cmd_key in zip(self.COMMANDS, self.command_map):
             config[topic] = self.get_mqtt_command_topic(cmd_key)
         return config
 
@@ -92,7 +85,7 @@ class CommandMixin:
         if not cmd_key:
             raise ValueError(f"topic {topic} is not recognized")
         index = self.command_map.index(cmd_key)
-        return cmd_key, self.COMMAND_PARSERS[index](value)
+        return cmd_key, self.COMMANDS[index][1](value)
 
 class Entity:
     _entities = {}
@@ -117,7 +110,7 @@ class Entity:
     async def publish_config(self, mqtt_client):
         config_topic = self.get_mqtt_config_topic()
         config_payload = self.get_mqtt_config()
-        logger.info("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
+        logger.debug("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
         await mqtt_client.publish(config_topic, payload=json.dumps(config_payload), retain=False)
 
     def set_property(self, key, value):
@@ -171,8 +164,8 @@ class BinarySensor(StateMixin, Entity):
     TYPE_ID = 2
     TYPE_NAME = "binary_sensor"
 
-    STATE_SERIALIZERS = [
-        bool2onoff
+    STATES = [
+        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
     ]
 
 
@@ -181,11 +174,11 @@ class Switch(StateMixin, CommandMixin, Entity):
     TYPE_ID = 3
     TYPE_NAME = "switch"
 
-    STATE_SERIALIZERS = [
-        bool2onoff
+    STATES = [
+        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
     ]
-    COMMAND_PARSERS = [
-        onoff2bool
+    COMMANDS = [
+        ("command_topic", onoff2bool, datatypes.UNSIGNED8),
     ]
     STATIC_PROPS = {
         "assumed_state": False
@@ -197,24 +190,16 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
-    STATE_TOPICS = [
-        "state_topic",
-        "brightness_state_topic",
+    STATES = [
+        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
+        ("brightness_state_topic", str, datatypes.UNSIGNED8)
     ]
 
-    COMMAND_TOPICS = [
-        "command_topic",
-        "brightness_command_topic",
+    COMMANDS = [
+        ("command_topic", onoff2bool, datatypes.UNSIGNED8),
+        ("brightness_command_topic", int, datatypes.UNSIGNED8),
     ]
 
-    STATE_SERIALIZERS = [
-        bool2onoff,
-        lambda pos: str(pos)
-    ]
-    COMMAND_PARSERS = [
-        onoff2bool,
-        lambda pos: int(pos)
-    ]
     STATIC_PROPS = {
         "assumed_state": False
     }
@@ -224,16 +209,6 @@ class Light(StateMixin, CommandMixin, Entity):
 class Cover(StateMixin, CommandMixin, Entity):
     TYPE_ID = 4
     TYPE_NAME = "cover"
-
-    STATE_TOPICS = [
-        "state_topic",
-        "position_topic",
-    ]
-
-    COMMAND_TOPICS = [
-        "command_topic",
-        "set_position_topic",
-    ]
 
     STATIC_PROPS = {
         "position_closed": 0,
@@ -246,18 +221,19 @@ class Cover(StateMixin, CommandMixin, Entity):
         2: "closed",
         3: "closing",
     }
+
     CMDS = {
         b"STOP": 0,
         b"OPEN": 1,
         b"CLOSE": 2,
     }
 
-    COMMAND_PARSERS = [
-        CMDS.get,
-        lambda pos: int(pos) * 255 // 100
+    STATES = [
+        ("state_topic", STATES.get, datatypes.UNSIGNED8),
+        ("position_topic", lambda pos: pos * 100 // 255, datatypes.UNSIGNED8)
     ]
 
-    STATE_SERIALIZERS = [
-        STATES.get,
-        lambda pos: pos * 100 // 255
+    COMMANDS = [
+        ("command_topic", CMDS.get, datatypes.UNSIGNED8),
+        ("set_position_topic", lambda pos: int(pos) * 255 // 100, datatypes.UNSIGNED8)
     ]
