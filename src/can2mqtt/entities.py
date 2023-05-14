@@ -157,7 +157,9 @@ class EntityRegistry:
 class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
-
+    STATES = [
+        ("state_topic", str, datatypes.REAL32),
+    ]
 
 @EntityRegistry.register
 class BinarySensor(StateMixin, Entity):
