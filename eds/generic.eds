@@ -17,7 +17,7 @@ CompactPDO=0
 GroupMessaging=0
 
 NrOfRXPDO=0
-NrOfTXPDO=4
+NrOfTXPDO=8
 LSS_Supported=0
 
 [1008]

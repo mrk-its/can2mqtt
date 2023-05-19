@@ -72,11 +72,17 @@ async def configure_entity(message, registry: EntityRegistry, mqtt_client):
 async def async_try_iter_items(obj):
     try:
         async for key in obj:
+            if not key: continue
+            logger.debug("trying to read %s", key)
             try:
-                yield key, await obj[key].aget_raw()
+                val = await obj[key].aget_raw()
+                logger.debug("val: %s", val)
+                yield key, val                
             except SdoAbortedError as e:
                 if e.code == CODE_SUBINDEX_NOT_FOUND:
+                    logger.debug("subindex not found")
                     continue
+                logger.info("error: %08x", e.code)
                 raise
     except SdoAbortedError as e:
         if e.code != CODE_OBJECT_NOT_FOUND:
@@ -123,37 +129,10 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     node.object_dictionary[base_index + 1] = Record("states", base_index + 1)
                     node.object_dictionary[base_index + 2] = Record("cmds", base_index + 2)
 
-                    if isinstance(entity, StateMixin):
-                        state_map = []
-                        index = base_index + 1
-                        for sub, (_, _, _type) in enumerate(entity.STATES, 1):
-                            v = Variable("state", index, sub)
-                            v.data_type = _type
-                            node.object_dictionary[index].add_member(v)
-                            state_map.append((index << 16) | (sub << 8))
-                        entity.setup_state_topics(state_map)
+                    entity.setup_object_dictionary(node, base_index)
 
-                    if isinstance(entity, CommandMixin):
-                        cmd_map = []
-                        index = base_index + 2
-                        for sub, (_, _, _type) in enumerate(entity.COMMANDS, 1):
-                            v = Variable("cmd", index, sub)
-                            v.data_type = _type
-                            node.object_dictionary[index].add_member(v)
-                            cmd_map.append((index << 16) | (sub << 8))
-                        entity.setup_command_topics(cmd_map)
-
-                    PROP_NAMES = {
-                        1: 'name',
-                        2: 'device_class',
-                        3: 'unit',
-                        4: 'state_class',
-                    }
                     async for key, value in async_try_iter_items(node.sdo[base_index]):
-                        name = PROP_NAMES.get(key)
-                        if name:
-                            logger.debug("\t%s %s: %s", name, key, value)
-                            entity.set_property(name, value)
+                        entity.set_metadata_property(key, value)
 
                     await entity.publish_config(mqtt_client)
 

@@ -2,6 +2,7 @@ from canopen.objectdictionary import datatypes
 from collections import defaultdict
 import logging
 import json
+from canopen.objectdictionary import Variable
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,16 @@ class StateMixin:
         index = self.state_map.index(state_key)
         return self.get_mqtt_state_topic(state_key), self.STATES[index][1](value)
 
+    def setup_object_dictionary(self, node, base_index):
+        super().setup_object_dictionary(node, base_index)
+        state_map = []
+        index = base_index + 1
+        for sub, (_, _, _type) in enumerate(self.STATES, 1):
+            v = Variable("state", index, sub)
+            v.data_type = _type
+            node.object_dictionary[index].add_member(v)
+            state_map.append((index << 16) | (sub << 8))
+        self.setup_state_topics(state_map)
 
 class CommandMixin:
     _mqtt_cmd_topic2entity = dict()
@@ -87,11 +98,34 @@ class CommandMixin:
         index = self.command_map.index(cmd_key)
         return cmd_key, self.COMMANDS[index][1](value)
 
+    def setup_object_dictionary(self, node, base_index):
+        super().setup_object_dictionary(node, base_index)
+        cmd_map = []
+        index = base_index + 2
+        for sub, (_, _, _type) in enumerate(self.COMMANDS, 1):
+            v = Variable("cmd", index, sub)
+            v.data_type = _type
+            node.object_dictionary[index].add_member(v)
+            cmd_map.append((index << 16) | (sub << 8))
+
+        self.setup_command_topics(cmd_map)
+
+
+COMMON_METADATA_PROPERTIES = {
+    1: 'name',
+    2: 'device_class',
+    3: 'unit',
+    4: 'state_class',
+}
+
+
 class Entity:
     _entities = {}
     NAME_PROP = 1
     TYPE_ID = None
     STATIC_PROPS = {}
+
+    METADATA_PROPERTIES = COMMON_METADATA_PROPERTIES
 
     def __init__(self, node, entity_index, mqtt_topic_prefix):
         self.node = node
@@ -140,6 +174,17 @@ class Entity:
         args_str = ', '.join(args)
         return f"{self.__class__.__name__}({args_str})"
 
+    def setup_object_dictionary(self, node, base_index):
+        pass
+
+    def set_metadata_property(self, key, value):
+        name = self.METADATA_PROPERTIES.get(key)
+        if name:
+            logger.debug("\t%s %s: %s", name, key, value)
+            self.set_property(name, value)
+        else:
+            logger.warning("\tunknown metadata property %s: %s", key, value)
+
 
 class EntityRegistry:
     _by_type = {}
@@ -159,6 +204,33 @@ class Sensor(StateMixin, Entity):
     TYPE_NAME = "sensor"
     STATES = [
         ("state_topic", str, datatypes.REAL32),
+    ]
+
+class MinMaxValueMixin:
+
+    def setup_object_dictionary(self, node, base_index):
+        super().setup_object_dictionary(node, base_index)
+        v = Variable("meta_min_value", base_index, 7)
+        v.data_type = datatypes.REAL32
+        node.object_dictionary[base_index].add_member(v)
+        v = Variable("meta_min_value", base_index, 8)
+        v.data_type = datatypes.REAL32
+        node.object_dictionary[base_index].add_member(v)
+
+@EntityRegistry.register
+class Sensor8(MinMaxValueMixin, StateMixin, Entity):
+    TYPE_ID = 6
+    TYPE_NAME = "sensor"
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED8),
+    ]
+
+@EntityRegistry.register
+class Sensor16(MinMaxValueMixin, StateMixin, Entity):
+    TYPE_ID = 7
+    TYPE_NAME = "sensor"
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED16),
     ]
 
 @EntityRegistry.register

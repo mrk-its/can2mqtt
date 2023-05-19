@@ -3,12 +3,12 @@ EDSFILE=$DIR/esphome.eds
 
 (cat $DIR/header.eds.tpl; echo) > $EDSFILE
 
-for TPDO in `seq 0 3`; do
+for TPDO in `seq 0 7`; do
   TPDO=$TPDO envsubst < $DIR/18xx.eds.tpl ;
   echo
 done >> $EDSFILE
 
-for TPDO in `seq 0 3`; do
+for TPDO in `seq 0 7`; do
   TPDO=$TPDO envsubst < $DIR/1axx.eds.tpl;
   echo
 done >> $EDSFILE
