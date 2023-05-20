@@ -167,6 +167,14 @@ class Entity:
                 }
             ],
             "availability_mode": "all",
+            "device": {
+                "identifiers": [f"canopen_node_{self.node.id}"],
+                "name": self.node.device_name,
+                "sw_version": self.node.sw_version or '',
+                "hw_version": self.node.hw_version or '',
+                "manufacturer": "mrk",
+                "model": "esphome-canopen",
+            }
         }
         cfg.update(self.STATIC_PROPS)
         cfg.update(self.props)

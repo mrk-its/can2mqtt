@@ -16,6 +16,8 @@ from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
 CODE_SUBINDEX_NOT_FOUND=0x06090011
 CODE_OBJECT_NOT_FOUND=0x06020000
 
+ESPHOME_VENDOR_ID = 0xa59a08f5
+ESPHOME_PRODUCT_CODE = 0x6bdfa1d9
 
 logger = logging.getLogger("can2mqtt.entities")
 
@@ -116,13 +118,34 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
             if not node_id in can_network:
                 od = import_od('eds/esphome.eds')
                 node = can_network.add_node(node_id, od)
+                node.is_supported = False
+
                 node.last_heartbeat_time = time.time()
                 node.availability = None
                 node.availability_topic = f"{mqtt_topic_prefix}/can_{node_id:03x}/availability"
                 node.prod_heartbeat_time = None
                 node.sdo.MAX_RETRIES = 3
-                
-                device_name = await node.sdo["DeviceName"].aget_raw()
+
+                node.sw_version = None
+                node.hw_version = None
+                node.device_name = None
+
+                try:
+                    vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
+                    product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()              
+                except SdoAbortedError as e:
+                    logger.warning("can't read identity info, skipping")
+                    continue
+                if vendor_id != ESPHOME_VENDOR_ID or product_code != ESPHOME_PRODUCT_CODE:
+                    logger.warning("vendor: %s, product: %s is not supported, skipping", vendor_id, product_code)
+                    continue
+
+                node.is_supported = True
+                node.device_name = await node.sdo["DeviceName"].aget_raw()
+
+                node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
+                node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+
                 try:
                     node.prod_heartbeat_time = await node.sdo["ProducerHeartbeatTime"].aget_raw()
                     node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
@@ -130,10 +153,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     pass
 
                 logger.info("node_id: %s device name: %s, heartbeat time (ms): %s",
-                            node_id, device_name, node.prod_heartbeat_time)
-                if device_name != "ESPHome":
-                    logger.warning("device %s is not supported, skipping", device_name)
-                    continue
+                            node_id, node.device_name, node.prod_heartbeat_time)
 
                 async for entity_index, entity_type in async_try_iter_items(node.sdo["EntityTypes"]):
                     try:
@@ -161,6 +181,8 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     map.add_callback(on_tptd)
 
             node = can_network.get(node_id)
+            if not node.is_supported:
+                continue
             is_online = not node.prod_heartbeat_time or (
                 (time.time() - node.last_heartbeat_time) < 2 * node.prod_heartbeat_time / 1000.0
             )
