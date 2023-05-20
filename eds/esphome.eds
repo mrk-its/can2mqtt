@@ -26,6 +26,12 @@ ObjectType=7
 DataType=9
 AccessType=R
 
+[1017]
+ParameterName=ProducerHeartbeatTime
+ObjectType=7
+DataType=6
+AccessType=RW
+
 [1800]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9

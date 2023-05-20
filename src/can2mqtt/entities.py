@@ -158,6 +158,15 @@ class Entity:
             "object_id": self.unique_id,
             "entity_id": self.unique_id,
             "unique_id": self.unique_id,
+            "availability": [
+                {
+                    "topic": self.node.availability_topic,
+                },
+                {
+                    "topic": f"{self.mqtt_topic_prefix}/can2mqtt/status",
+                }
+            ],
+            "availability_mode": "all",
         }
         cfg.update(self.STATIC_PROPS)
         cfg.update(self.props)

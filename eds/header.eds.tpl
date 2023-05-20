@@ -25,3 +25,9 @@ ParameterName=DeviceName
 ObjectType=7
 DataType=9
 AccessType=R
+
+[1017]
+ParameterName=ProducerHeartbeatTime
+ObjectType=7
+DataType=6
+AccessType=RW

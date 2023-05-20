@@ -1,8 +1,8 @@
 import asyncio
-import json
+import hashlib
 import logging
 import re
-import hashlib
+import time
 
 import asyncio_mqtt as aiomqtt
 import canopen
@@ -77,7 +77,7 @@ async def async_try_iter_items(obj):
             try:
                 val = await obj[key].aget_raw()
                 logger.debug("val: %s", val)
-                yield key, val                
+                yield key, val
             except SdoAbortedError as e:
                 if e.code == CODE_SUBINDEX_NOT_FOUND:
                     logger.debug("subindex not found")
@@ -87,6 +87,12 @@ async def async_try_iter_items(obj):
     except SdoAbortedError as e:
         if e.code != CODE_OBJECT_NOT_FOUND:
             raise
+
+
+def get_heartbeat_cb(node):
+    def on_heartbeat(status):
+        node.last_heartbeat_time = time.time()
+    return on_heartbeat
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
@@ -110,9 +116,21 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
             if not node_id in can_network:
                 od = import_od('eds/esphome.eds')
                 node = can_network.add_node(node_id, od)
+                node.last_heartbeat_time = time.time()
+                node.availability = None
+                node.availability_topic = f"{mqtt_topic_prefix}/can_{node_id:03x}/availability"
+                node.prod_heartbeat_time = None
                 node.sdo.MAX_RETRIES = 3
+                
                 device_name = await node.sdo["DeviceName"].aget_raw()
-                logger.info("node_id: %s device_name: %s", node_id, device_name)
+                try:
+                    node.prod_heartbeat_time = await node.sdo["ProducerHeartbeatTime"].aget_raw()
+                    node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
+                except SdoAbortedError as e:
+                    pass
+
+                logger.info("node_id: %s device name: %s, heartbeat time (ms): %s",
+                            node_id, device_name, node.prod_heartbeat_time)
                 if device_name != "ESPHome":
                     logger.warning("device %s is not supported, skipping", device_name)
                     continue
@@ -141,6 +159,16 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 
                 for key, map in node.tpdo.map.items():
                     map.add_callback(on_tptd)
+
+            node = can_network.get(node_id)
+            is_online = not node.prod_heartbeat_time or (
+                (time.time() - node.last_heartbeat_time) < 2 * node.prod_heartbeat_time / 1000.0
+            )
+            availability = "online" if is_online else "offline"
+            if node.availability != availability:
+                logger.info("node %s is %s", node_id, availability)
+                await mqtt_client.publish(node.availability_topic, payload=availability)
+                node.availability = availability
 
         await asyncio.sleep(1.0)
 
@@ -186,7 +214,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     if subidx:
                         var = var[subidx]
                     asyncio.create_task(var.aset_raw(value))
-                    logger.info("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
+                    logger.debug("entity: %s cmd_key: %s, value: %s sent successfully", entity, cmd_key, value)
                 except ValueError as e:
                     logger.error("%s", e)
             else:
@@ -203,12 +231,19 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
-    async with aiomqtt.Client(mqtt_server) as mqtt_client:
-        can_network = canopen.Network()
-        # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
-        loop = asyncio.get_running_loop()
-        can_network.connect(loop=loop, interface=interface, channel=channel, bitrate=bitrate)
-        await asyncio.gather(
-            can_reader(can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix),
-            mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix),
-        )
+    status_topic = f"{mqtt_topic_prefix}/can2mqtt/status"
+    will = aiomqtt.Will(status_topic, b"offline", 1, retain=True)
+    async with aiomqtt.Client(mqtt_server, will=will) as mqtt_client:
+        try:
+            await mqtt_client.publish(status_topic, payload=b"online", retain=False)
+            can_network = canopen.Network()
+            # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
+            loop = asyncio.get_running_loop()
+            can_network.connect(loop=loop, interface=interface, channel=channel, bitrate=bitrate)
+            await asyncio.gather(
+                can_reader(can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix),
+                mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix),
+            )
+        except:
+            await mqtt_client.publish(status_topic, payload=b"offline", retain=False)
+            raise
