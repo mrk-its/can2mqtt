@@ -206,7 +206,13 @@ class Sensor(StateMixin, Entity):
         ("state_topic", str, datatypes.REAL32),
     ]
 
+
 class MinMaxValueMixin:
+    METADATA_PROPERTIES = {
+        7: 'min_value',
+        8: 'max_value',
+        **COMMON_METADATA_PROPERTIES,
+    }
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
@@ -217,6 +223,13 @@ class MinMaxValueMixin:
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
 
+    def get_mqtt_state(self, state_key, value):
+        min_val = self.props.get('min_value', 0)
+        max_val = self.props.get('max_value', self.N_LEVELS - 1)
+        value2 = value * (max_val - min_val + 1) // self.N_LEVELS + min_val
+        return super().get_mqtt_state(state_key, value2)
+
+
 @EntityRegistry.register
 class Sensor8(MinMaxValueMixin, StateMixin, Entity):
     TYPE_ID = 6
@@ -224,6 +237,8 @@ class Sensor8(MinMaxValueMixin, StateMixin, Entity):
     STATES = [
         ("state_topic", str, datatypes.UNSIGNED8),
     ]
+    N_LEVELS = 256
+
 
 @EntityRegistry.register
 class Sensor16(MinMaxValueMixin, StateMixin, Entity):
@@ -232,6 +247,8 @@ class Sensor16(MinMaxValueMixin, StateMixin, Entity):
     STATES = [
         ("state_topic", str, datatypes.UNSIGNED16),
     ]
+    N_LEVELS = 65536
+
 
 @EntityRegistry.register
 class BinarySensor(StateMixin, Entity):
