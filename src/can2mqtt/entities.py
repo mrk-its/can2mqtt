@@ -216,6 +216,22 @@ class EntityRegistry:
 
 
 @EntityRegistry.register
+class NMTStateSensor(Entity):
+    TYPE_ID = 0
+    TYPE_NAME = "sensor"
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED8),
+    ]
+
+    def get_state_topic(self):
+        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_nmt_state"
+
+    def get_mqtt_config(self):
+        config = super().get_mqtt_config()
+        config["state_topic"] = self.get_state_topic()
+        return config
+
+@EntityRegistry.register
 class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"

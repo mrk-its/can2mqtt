@@ -90,14 +90,18 @@ async def async_try_iter_items(obj):
         if e.code != CODE_OBJECT_NOT_FOUND:
             raise
 
-
-def get_heartbeat_cb(node):
-    def on_heartbeat(status):
-        node.last_heartbeat_time = time.time()
-    return on_heartbeat
-
-
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
+    def get_heartbeat_cb(node):
+        def on_heartbeat(status):
+            logger.debug("heartbeat from %d: %s", node.id, status)
+            node.last_heartbeat_time = time.time()
+            if node.ntm_state_entity:
+                state_topic = node.ntm_state_entity.get_state_topic()
+                asyncio.create_task(
+                    mqtt_client.publish(state_topic, payload=str(status), retain=False)
+                )
+        return on_heartbeat
+
     async def on_tptd(map):
         node_id = map.pdo_node.node.id
         for v in map.map:
@@ -125,14 +129,14 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 node.availability_topic = f"{mqtt_topic_prefix}/can_{node_id:03x}/availability"
                 node.prod_heartbeat_time = None
                 node.sdo.MAX_RETRIES = 3
-
                 node.sw_version = None
                 node.hw_version = None
                 node.device_name = None
+                node.ntm_state_entity = None
 
                 try:
                     vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
-                    product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()              
+                    product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
                 except SdoAbortedError as e:
                     logger.warning("can't read identity info, skipping")
                     continue
@@ -154,6 +158,12 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 
                 logger.info("node_id: %s device name: %s, heartbeat time (ms): %s",
                             node_id, node.device_name, node.prod_heartbeat_time)
+
+                entity = EntityRegistry.create(0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix)
+                node.ntm_state_entity = entity
+                entity.set_property("name", "NMT State")
+                await entity.publish_config(mqtt_client)
+                logger.info("  entity: %r", entity)
 
                 async for entity_index, entity_type in async_try_iter_items(node.sdo["EntityTypes"]):
                     try:
@@ -211,7 +221,7 @@ async def can_test_upload(can_network, node_id, payload):
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
-    UPLOAD_RE = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/firmware")
+    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/(nmt|firmware)")
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
@@ -219,6 +229,10 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                 logger.debug("recv mqtt topic: %s %s", message.topic, message.payload)
             else:
                 logger.debug("recv mqtt topic: %s payload len: %s", message.topic, len(message.payload))
+
+            if message.topic.value == f"{mqtt_topic_prefix}/nmt":
+                await can_network.scanner.scan()
+                continue
 
             if message.topic.value == f"{mqtt_topic_prefix}/status":
                 if message.payload == b"online":
@@ -240,10 +254,14 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                 except ValueError as e:
                     logger.error("%s", e)
             else:
-                m = UPLOAD_RE.match(message.topic.value)
-                if m:
-                    node_id = int(m.group(1))
-                    asyncio.create_task(can_test_upload(can_network, node_id, message.payload))
+                m = NODE_CMD.match(message.topic.value)
+                match m and m.groups():
+                    case (node_id, "nmt"):
+                        cmd = int(message.payload.decode("utf-8"))
+                        logger.info("sent nmt command %d to node %s", cmd, node_id)
+                        can_network.send_message(0, [cmd, int(node_id)])
+                    case (node_id, "firmware"):
+                        asyncio.create_task(can_test_upload(can_network, node_id, message.payload))
 
 async def start(
     mqtt_server,
