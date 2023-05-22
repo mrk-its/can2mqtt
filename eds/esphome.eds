@@ -111,237 +111,6 @@ DefaultValue=255
 LowLimit=0
 HighLimit=255
 
-[1801]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1801sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1801sub1]
-ParameterName=COB-ID use by TPDO 1
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1801sub2]
-ParameterName=Transmission type TPDO 1
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1802]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1802sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1802sub1]
-ParameterName=COB-ID use by TPDO 2
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1802sub2]
-ParameterName=Transmission type TPDO 2
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1803]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1803sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1803sub1]
-ParameterName=COB-ID use by TPDO 3
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1803sub2]
-ParameterName=Transmission type TPDO 3
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1804]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1804sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1804sub1]
-ParameterName=COB-ID use by TPDO 4
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1804sub2]
-ParameterName=Transmission type TPDO 4
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1805]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1805sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1805sub1]
-ParameterName=COB-ID use by TPDO 5
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1805sub2]
-ParameterName=Transmission type TPDO 5
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1806]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1806sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1806sub1]
-ParameterName=COB-ID use by TPDO 6
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1806sub2]
-ParameterName=Transmission type TPDO 6
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
-[1807]
-ParameterName=Transmit PDO 0 communication parameters
-ObjectType=9
-SubNumber=3
-
-[1807sub0]
-ParameterName=Number of Entries
-ObjectType=7
-DataType=5
-AccessType=ro
-PDOMapping=0
-DefaultValue=2
-LowLimit=2
-HighLimit=2
-
-[1807sub1]
-ParameterName=COB-ID use by TPDO 7
-ObjectType=7
-DataType=7
-AccessType=RW
-PDOMapping=0
-DefaultValue=\+384
-
-[1807sub2]
-ParameterName=Transmission type TPDO 7
-ObjectType=7
-DataType=5
-AccessType=RW
-PDOMapping=0
-DefaultValue=255
-LowLimit=0
-HighLimit=255
-
 [1a00]
 ParameterName=TPDO0 mapping parameter
 ObjectType=9
@@ -420,6 +189,39 @@ DataType=7
 AccessType=RW
 PDOMapping=0
 DefaultValue=0
+
+[1801]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1801sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1801sub1]
+ParameterName=COB-ID use by TPDO 1
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1801sub2]
+ParameterName=Transmission type TPDO 1
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
 
 [1a01]
 ParameterName=TPDO1 mapping parameter
@@ -500,6 +302,39 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1802]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1802sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1802sub1]
+ParameterName=COB-ID use by TPDO 2
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1802sub2]
+ParameterName=Transmission type TPDO 2
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
+
 [1a02]
 ParameterName=TPDO2 mapping parameter
 ObjectType=9
@@ -578,6 +413,39 @@ DataType=7
 AccessType=RW
 PDOMapping=0
 DefaultValue=0
+
+[1803]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1803sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1803sub1]
+ParameterName=COB-ID use by TPDO 3
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1803sub2]
+ParameterName=Transmission type TPDO 3
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
 
 [1a03]
 ParameterName=TPDO3 mapping parameter
@@ -658,6 +526,39 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1804]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1804sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1804sub1]
+ParameterName=COB-ID use by TPDO 4
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1804sub2]
+ParameterName=Transmission type TPDO 4
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
+
 [1a04]
 ParameterName=TPDO4 mapping parameter
 ObjectType=9
@@ -736,6 +637,39 @@ DataType=7
 AccessType=RW
 PDOMapping=0
 DefaultValue=0
+
+[1805]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1805sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1805sub1]
+ParameterName=COB-ID use by TPDO 5
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1805sub2]
+ParameterName=Transmission type TPDO 5
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
 
 [1a05]
 ParameterName=TPDO5 mapping parameter
@@ -816,6 +750,39 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1806]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1806sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1806sub1]
+ParameterName=COB-ID use by TPDO 6
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1806sub2]
+ParameterName=Transmission type TPDO 6
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
+
 [1a06]
 ParameterName=TPDO6 mapping parameter
 ObjectType=9
@@ -895,6 +862,39 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1807]
+ParameterName=Transmit PDO 0 communication parameters
+ObjectType=9
+SubNumber=3
+
+[1807sub0]
+ParameterName=Number of Entries
+ObjectType=7
+DataType=5
+AccessType=ro
+PDOMapping=0
+DefaultValue=2
+LowLimit=2
+HighLimit=2
+
+[1807sub1]
+ParameterName=COB-ID use by TPDO 7
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=\+384
+
+[1807sub2]
+ParameterName=Transmission type TPDO 7
+ObjectType=7
+DataType=5
+AccessType=RW
+PDOMapping=0
+DefaultValue=255
+LowLimit=0
+HighLimit=255
+
 [1a07]
 ParameterName=TPDO7 mapping parameter
 ObjectType=9
@@ -973,6 +973,678 @@ DataType=7
 AccessType=RW
 PDOMapping=0
 DefaultValue=0
+
+[1400]
+ParameterName=RPDO #0 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1400sub0]
+ParameterName=RPDO #0 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1400sub1]
+ParameterName=COB-ID use by RPDO #0
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1400sub2]
+ParameterName=Transmission type RPDO #0
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1600]
+ParameterName=RPDO #0 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1600sub0]
+ParameterName=RPDO #0 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1600sub1]
+ParameterName=RPDO #0 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub2]
+ParameterName=RPDO #0 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub3]
+ParameterName=RPDO #0 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub4]
+ParameterName=RPDO #0 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub5]
+ParameterName=RPDO #0 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub6]
+ParameterName=RPDO #0 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub7]
+ParameterName=RPDO #0 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1600sub8]
+ParameterName=RPDO #0 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1401]
+ParameterName=RPDO #1 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1401sub0]
+ParameterName=RPDO #1 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1401sub1]
+ParameterName=COB-ID use by RPDO #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1401sub2]
+ParameterName=Transmission type RPDO #1
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1601]
+ParameterName=RPDO #1 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1601sub0]
+ParameterName=RPDO #1 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1601sub1]
+ParameterName=RPDO #1 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub2]
+ParameterName=RPDO #1 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub3]
+ParameterName=RPDO #1 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub4]
+ParameterName=RPDO #1 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub5]
+ParameterName=RPDO #1 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub6]
+ParameterName=RPDO #1 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub7]
+ParameterName=RPDO #1 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1601sub8]
+ParameterName=RPDO #1 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1402]
+ParameterName=RPDO #2 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1402sub0]
+ParameterName=RPDO #2 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1402sub1]
+ParameterName=COB-ID use by RPDO #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1402sub2]
+ParameterName=Transmission type RPDO #2
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1602]
+ParameterName=RPDO #2 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1602sub0]
+ParameterName=RPDO #2 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1602sub1]
+ParameterName=RPDO #2 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub2]
+ParameterName=RPDO #2 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub3]
+ParameterName=RPDO #2 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub4]
+ParameterName=RPDO #2 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub5]
+ParameterName=RPDO #2 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub6]
+ParameterName=RPDO #2 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub7]
+ParameterName=RPDO #2 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1602sub8]
+ParameterName=RPDO #2 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1403]
+ParameterName=RPDO #3 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1403sub0]
+ParameterName=RPDO #3 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1403sub1]
+ParameterName=COB-ID use by RPDO #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1403sub2]
+ParameterName=Transmission type RPDO #3
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1603]
+ParameterName=RPDO #3 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1603sub0]
+ParameterName=RPDO #3 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1603sub1]
+ParameterName=RPDO #3 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub2]
+ParameterName=RPDO #3 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub3]
+ParameterName=RPDO #3 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub4]
+ParameterName=RPDO #3 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub5]
+ParameterName=RPDO #3 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub6]
+ParameterName=RPDO #3 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub7]
+ParameterName=RPDO #3 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1603sub8]
+ParameterName=RPDO #3 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1404]
+ParameterName=RPDO #4 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1404sub0]
+ParameterName=RPDO #4 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1404sub1]
+ParameterName=COB-ID use by RPDO #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1404sub2]
+ParameterName=Transmission type RPDO #4
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1604]
+ParameterName=RPDO #4 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1604sub0]
+ParameterName=RPDO #4 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1604sub1]
+ParameterName=RPDO #4 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub2]
+ParameterName=RPDO #4 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub3]
+ParameterName=RPDO #4 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub4]
+ParameterName=RPDO #4 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub5]
+ParameterName=RPDO #4 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub6]
+ParameterName=RPDO #4 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub7]
+ParameterName=RPDO #4 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1604sub8]
+ParameterName=RPDO #4 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1405]
+ParameterName=RPDO #5 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1405sub0]
+ParameterName=RPDO #5 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1405sub1]
+ParameterName=COB-ID use by RPDO #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1405sub2]
+ParameterName=Transmission type RPDO #5
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1605]
+ParameterName=RPDO #5 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1605sub0]
+ParameterName=RPDO #5 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1605sub1]
+ParameterName=RPDO #5 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub2]
+ParameterName=RPDO #5 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub3]
+ParameterName=RPDO #5 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub4]
+ParameterName=RPDO #5 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub5]
+ParameterName=RPDO #5 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub6]
+ParameterName=RPDO #5 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub7]
+ParameterName=RPDO #5 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1605sub8]
+ParameterName=RPDO #5 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1406]
+ParameterName=RPDO #6 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1406sub0]
+ParameterName=RPDO #6 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1406sub1]
+ParameterName=COB-ID use by RPDO #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1406sub2]
+ParameterName=Transmission type RPDO #6
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1606]
+ParameterName=RPDO #6 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1606sub0]
+ParameterName=RPDO #6 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1606sub1]
+ParameterName=RPDO #6 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub2]
+ParameterName=RPDO #6 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub3]
+ParameterName=RPDO #6 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub4]
+ParameterName=RPDO #6 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub5]
+ParameterName=RPDO #6 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub6]
+ParameterName=RPDO #6 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub7]
+ParameterName=RPDO #6 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1606sub8]
+ParameterName=RPDO #6 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1407]
+ParameterName=RPDO #7 communication parameters
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1407sub0]
+ParameterName=RPDO #7 params, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1407sub1]
+ParameterName=COB-ID use by RPDO #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1407sub2]
+ParameterName=Transmission type RPDO #7
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1607]
+ParameterName=RPDO #7 mapping
+ObjectType=9
+SubNumber=3
+AccessType=RW
+
+[1607sub0]
+ParameterName=RPDO #7 mapping, Number of Entries
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1607sub1]
+ParameterName=RPDO #7 mapping #1
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub2]
+ParameterName=RPDO #7 mapping #2
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub3]
+ParameterName=RPDO #7 mapping #3
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub4]
+ParameterName=RPDO #7 mapping #4
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub5]
+ParameterName=RPDO #7 mapping #5
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub6]
+ParameterName=RPDO #7 mapping #6
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub7]
+ParameterName=RPDO #7 mapping #7
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1607sub8]
+ParameterName=RPDO #7 mapping #8
+ObjectType=7
+DataType=7
+AccessType=RW
 
 [2000]
 ParameterName=EntityTypes

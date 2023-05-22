@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import json
 import logging
 import re
 import time
@@ -221,7 +222,7 @@ async def can_test_upload(can_network, node_id, payload):
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
-    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/(nmt|firmware)")
+    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/(nmt|firmware|write)(/.*)?$")
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
@@ -256,12 +257,23 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
             else:
                 m = NODE_CMD.match(message.topic.value)
                 match m and m.groups():
-                    case (node_id, "nmt"):
+                    case (node_id, "nmt", _):
                         cmd = int(message.payload.decode("utf-8"))
                         logger.info("sent nmt command %d to node %s", cmd, node_id)
                         can_network.send_message(0, [cmd, int(node_id)])
-                    case (node_id, "firmware"):
+                    case (node_id, "firmware", _):
                         asyncio.create_task(can_test_upload(can_network, node_id, message.payload))
+                    case (node_id, "write", arg):
+                        try:
+                            node_id = int(node_id)
+                            index = int(arg[1:], 16)
+                            data = [int(v, 16) for v in re.split(b"[ ,]+", message.payload)]
+                        except ValueError:
+                            logger.warning("invalid write command: %s", message.payload)
+                            continue
+                        print(f"write to node {node_id} at index: {index:04x}, data: {data}")
+                        for subidx, value in enumerate(data):
+                            await can_network[node_id].sdo[index][subidx].aset_raw(value)
 
 async def start(
     mqtt_server,
