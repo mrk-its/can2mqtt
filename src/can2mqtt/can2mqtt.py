@@ -148,8 +148,14 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 node.is_supported = True
                 node.device_name = await node.sdo["DeviceName"].aget_raw()
 
-                node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
-                node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+                try:
+                    node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
+                except SdoAbortedError as e:
+                    pass
+                try:
+                    node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+                except SdoAbortedError as e:
+                    pass
 
                 try:
                     node.prod_heartbeat_time = await node.sdo["ProducerHeartbeatTime"].aget_raw()
