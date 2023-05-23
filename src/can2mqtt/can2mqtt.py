@@ -264,16 +264,22 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     case (node_id, "firmware", _):
                         asyncio.create_task(can_test_upload(can_network, node_id, message.payload))
                     case (node_id, "write", arg):
+                        arg = arg[1:]
                         try:
                             node_id = int(node_id)
-                            index = int(arg[1:], 16)
-                            data = [int(v, 16) for v in re.split(b"[ ,]+", message.payload)]
+                            dest = [int(i, 16) for i in arg.split(":")]
+                            index = dest[0]
+                            start_subidx = dest[1] if len(dest) > 1 else 0
                         except ValueError:
                             logger.warning("invalid write command: %s", message.payload)
                             continue
-                        print(f"write to node {node_id} at index: {index:04x}, data: {data}")
-                        for subidx, value in enumerate(data):
-                            await can_network[node_id].sdo[index][subidx].aset_raw(value)
+                        try:
+                            data = [int(v, 16) for v in re.split(b"[ ,]+", message.payload)]
+                            logger.info(f"write to node {node_id} at index: {index:04x}:{start_subidx:02x}, data: {data}")
+                            for subidx, value in enumerate(data, start_subidx):
+                                await can_network[node_id].sdo[index][subidx].aset_raw(value)
+                        except SdoAbortedError as e:
+                            logger.error("sdo error: %s", e)
 
 async def start(
     mqtt_server,

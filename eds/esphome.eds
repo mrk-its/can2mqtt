@@ -38,6 +38,52 @@ ObjectType=7
 DataType=9
 AccessType=R
 
+[1010]
+ParameterName=ParamStore
+ObjectType=9
+
+[1010sub0]
+ParameterName=Number of ParamStore Entries
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1010sub1]
+ParameterName=Store All
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1010sub2]
+ParameterName=Store Comm
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1011]
+ParameterName=ParamReset
+ObjectType=9
+
+[1011sub0]
+ParameterName=Number of ParamStore Entries
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1011sub1]
+ParameterName=Reset All Params
+ObjectType=7
+DataType=7
+AccessType=RW
+
+[1011sub2]
+ParameterName=Reset Comm Params
+ObjectType=7
+DataType=7
+AccessType=RW
+
+
+
 [1017]
 ParameterName=ProducerHeartbeatTime
 ObjectType=7
