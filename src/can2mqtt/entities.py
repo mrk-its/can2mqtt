@@ -15,8 +15,8 @@ def bool2onoff(value):
 def onoff2bool(value):
     return value == b"ON"
 
-class StateMixin:
 
+class StateMixin:
     _node_state_key_2_entity = defaultdict(dict)
 
     STATES = [
@@ -59,6 +59,7 @@ class StateMixin:
             node.object_dictionary[index].add_member(v)
             state_map.append((index << 16) | (sub << 8))
         self.setup_state_topics(state_map)
+
 
 class CommandMixin:
     _mqtt_cmd_topic2entity = dict()
@@ -112,10 +113,10 @@ class CommandMixin:
 
 
 COMMON_METADATA_PROPERTIES = {
-    1: 'name',
-    2: 'device_class',
-    3: 'unit',
-    4: 'state_class',
+    1: "name",
+    2: "device_class",
+    3: "unit",
+    4: "state_class",
 }
 
 
@@ -145,7 +146,9 @@ class Entity:
         config_topic = self.get_mqtt_config_topic()
         config_payload = self.get_mqtt_config()
         logger.debug("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
-        await mqtt_client.publish(config_topic, payload=json.dumps(config_payload), retain=False)
+        await mqtt_client.publish(
+            config_topic, payload=json.dumps(config_payload), retain=False
+        )
 
     def set_property(self, key, value):
         self.props[key] = value
@@ -164,17 +167,17 @@ class Entity:
                 },
                 {
                     "topic": f"{self.mqtt_topic_prefix}/can2mqtt/status",
-                }
+                },
             ],
             "availability_mode": "all",
             "device": {
                 "identifiers": [f"canopen_node_{self.node.id}"],
                 "name": self.node.device_name,
-                "sw_version": self.node.sw_version or '',
-                "hw_version": self.node.hw_version or '',
+                "sw_version": self.node.sw_version or "",
+                "hw_version": self.node.hw_version or "",
                 "manufacturer": "mrk",
                 "model": "esphome-canopen",
-            }
+            },
         }
         cfg.update(self.STATIC_PROPS)
         cfg.update(self.props)
@@ -188,7 +191,7 @@ class Entity:
         args.append(f"node_id={self.node.id}")
         args.append(f"entity_index={self.entity_index}")
         args.append(f"props={self.props}")
-        args_str = ', '.join(args)
+        args_str = ", ".join(args)
         return f"{self.__class__.__name__}({args_str})"
 
     def setup_object_dictionary(self, node, base_index):
@@ -231,6 +234,7 @@ class NMTStateSensor(Entity):
         config["state_topic"] = self.get_state_topic()
         return config
 
+
 @EntityRegistry.register
 class Sensor(StateMixin, Entity):
     TYPE_ID = 1
@@ -242,8 +246,8 @@ class Sensor(StateMixin, Entity):
 
 class MinMaxValueMixin:
     METADATA_PROPERTIES = {
-        7: 'min_value',
-        8: 'max_value',
+        7: "min_value",
+        8: "max_value",
         **COMMON_METADATA_PROPERTIES,
     }
 
@@ -257,8 +261,8 @@ class MinMaxValueMixin:
         node.object_dictionary[base_index].add_member(v)
 
     def get_mqtt_state(self, state_key, value):
-        min_val = self.props.get('min_value', 0)
-        max_val = self.props.get('max_value', self.N_LEVELS - 1)
+        min_val = self.props.get("min_value", 0)
+        max_val = self.props.get("max_value", self.N_LEVELS - 1)
         value2 = value * (max_val - min_val + 1) // self.N_LEVELS + min_val
         return super().get_mqtt_state(state_key, value2)
 
@@ -304,9 +308,7 @@ class Switch(StateMixin, CommandMixin, Entity):
     COMMANDS = [
         ("command_topic", onoff2bool, datatypes.UNSIGNED8),
     ]
-    STATIC_PROPS = {
-        "assumed_state": False
-    }
+    STATIC_PROPS = {"assumed_state": False}
 
 
 @EntityRegistry.register
@@ -316,7 +318,7 @@ class Light(StateMixin, CommandMixin, Entity):
 
     STATES = [
         ("state_topic", bool2onoff, datatypes.UNSIGNED8),
-        ("brightness_state_topic", str, datatypes.UNSIGNED8)
+        ("brightness_state_topic", str, datatypes.UNSIGNED8),
     ]
 
     COMMANDS = [
@@ -324,9 +326,7 @@ class Light(StateMixin, CommandMixin, Entity):
         ("brightness_command_topic", int, datatypes.UNSIGNED8),
     ]
 
-    STATIC_PROPS = {
-        "assumed_state": False
-    }
+    STATIC_PROPS = {"assumed_state": False}
 
 
 @EntityRegistry.register
@@ -354,10 +354,10 @@ class Cover(StateMixin, CommandMixin, Entity):
 
     STATES = [
         ("state_topic", STATES.get, datatypes.UNSIGNED8),
-        ("position_topic", lambda pos: pos * 100 // 255, datatypes.UNSIGNED8)
+        ("position_topic", lambda pos: pos * 100 // 255, datatypes.UNSIGNED8),
     ]
 
     COMMANDS = [
         ("command_topic", CMDS.get, datatypes.UNSIGNED8),
-        ("set_position_topic", lambda pos: int(pos) * 255 // 100, datatypes.UNSIGNED8)
+        ("set_position_topic", lambda pos: int(pos) * 255 // 100, datatypes.UNSIGNED8),
     ]
