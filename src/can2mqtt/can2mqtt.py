@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import json
 import logging
 import re
 import time
@@ -10,7 +9,6 @@ import canopen
 from canopen.sdo.exceptions import SdoAbortedError
 from canopen.objectdictionary import ObjectDictionary, import_od, datatypes, Record, Variable
 
-from . import consts
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
 
 
@@ -23,53 +21,7 @@ ESPHOME_PRODUCT_CODE = 0x6bdfa1d9
 logger = logging.getLogger("can2mqtt.entities")
 
 
-def device_properties(type_name, data):
-    if len(data) > 1 and type_name in consts.DEVICE_CLASS:
-        yield "device_class", consts.DEVICE_CLASS[type_name].get(data[1])
-    if len(data) > 2:
-        yield "state_class", consts.STATE_CLASS.get(data[2])
-
-
-def single_property(name):
-    return lambda type_name, data: [(name, data.decode("utf-8"))]
-
-
-CONFIG_PROPERTIES = {
-    consts.PROPERTY_CONFIG: device_properties,
-    consts.PROPERTY_CONFIG_NAME: single_property("name"),
-    consts.PROPERTY_CONFIG_UNIT: single_property("unit_of_measurement"),
-}
-
-
 TOPIC_RE = re.compile("([\w-]+)/can_([0-9a-fA-F]{1,7})/(.*)")
-
-
-def parse_topic(topic):
-    m = TOPIC_RE.match(topic)
-    if m:
-        entity_type, entity_id, suffix = m.groups()
-        return entity_type, int(entity_id, 16), suffix
-
-
-async def configure_entity(message, registry: EntityRegistry, mqtt_client):
-    property_id = message.arbitration_id & 0xF
-    entity_id = message.arbitration_id >> 4
-
-    entity = registry.get(entity_id)
-
-    if property_id == consts.PROPERTY_CONFIG:
-        entity = registry.can_configure(message.data[0], entity_id, message.data)
-        if not entity:
-            return
-        for topic in entity.get_config_topics_to_invalidate(registry.all_type_names()):
-            await mqtt_client.publish(topic, payload=b"", retain=True)
-
-    if entity and property_id in CONFIG_PROPERTIES:
-        entity.update_properties(
-            CONFIG_PROPERTIES[property_id](entity.type_name, message.data)
-        )
-        await entity.mqtt_publish_config(mqtt_client)
-    return entity, property_id
 
 
 async def async_try_iter_items(obj):
