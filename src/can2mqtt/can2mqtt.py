@@ -124,6 +124,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 od = import_od('eds/esphome.eds')
                 node = can_network.add_node(node_id, od)
                 node.is_supported = False
+                node.is_operational = False
 
                 node.last_heartbeat_time = time.time()
                 node.availability = None
@@ -134,6 +135,11 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 node.hw_version = None
                 node.device_name = None
                 node.ntm_state_entity = None
+                continue
+
+            node = can_network[node_id]
+            if not node.is_operational and node.nmt.state == "OPERATIONAL":
+                node.is_operational=True
 
                 try:
                     vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
@@ -197,9 +203,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                 for key, map in node.tpdo.map.items():
                     map.add_callback(on_tptd)
 
-            node = can_network.get(node_id)
             if not node.is_supported:
                 continue
+
             is_online = not node.prod_heartbeat_time or (
                 (time.time() - node.last_heartbeat_time) < 2 * node.prod_heartbeat_time / 1000.0
             )
