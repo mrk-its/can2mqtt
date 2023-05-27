@@ -208,9 +208,12 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
             availability = "online" if is_online else "offline"
             if node.availability != availability:
                 logger.info("node %s is %s", node_id, availability)
-                await mqtt_client.publish(node.availability_topic, payload=availability)
                 node.availability = availability
+            await mqtt_client.publish(
+                node.availability_topic, payload=node.availability
+            )
 
+        await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
         await asyncio.sleep(1.0)
 
 
@@ -309,6 +312,15 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                             logger.error("sdo error: %s", e)
 
 
+def get_can2mqtt_status_topic(mqtt_topic_prefix):
+    return f"{mqtt_topic_prefix}/can2mqtt/status"
+
+
+async def publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, status):
+    status_topic = get_can2mqtt_status_topic(mqtt_topic_prefix)
+    await mqtt_client.publish(status_topic, payload=status, retain=False)
+
+
 async def start(
     mqtt_server,
     interface,
@@ -317,11 +329,12 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
-    status_topic = f"{mqtt_topic_prefix}/can2mqtt/status"
-    will = aiomqtt.Will(status_topic, b"offline", 1, retain=True)
+    will = aiomqtt.Will(
+        get_can2mqtt_status_topic(mqtt_topic_prefix), b"offline", 1, retain=True
+    )
     async with aiomqtt.Client(mqtt_server, will=will) as mqtt_client:
         try:
-            await mqtt_client.publish(status_topic, payload=b"online", retain=False)
+            await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
             can_network = canopen.Network()
             # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
             loop = asyncio.get_running_loop()
@@ -337,5 +350,5 @@ async def start(
                 ),
             )
         except:
-            await mqtt_client.publish(status_topic, payload=b"offline", retain=False)
+            await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "offline")
             raise
