@@ -192,6 +192,10 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
 
                     await entity.publish_config(mqtt_client)
 
+                await asyncio.sleep(1.0)
+                for entity in Entity.entities():
+                    await entity.mqtt_initial_publish(mqtt_client)
+
                 logger.debug("reading tpdo config")
                 await node.tpdo.aread()
 
@@ -254,6 +258,10 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                 if message.payload == b"online":
                     for entity in Entity.entities():
                         await entity.publish_config(mqtt_client)
+                    await asyncio.sleep(1.0)
+                    for entity in Entity.entities():
+                        await entity.mqtt_initial_publish(mqtt_client)
+
                 continue
 
             entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)

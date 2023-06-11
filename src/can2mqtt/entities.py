@@ -60,6 +60,12 @@ class StateMixin:
             state_map.append((index << 16) | (sub << 8))
         self.setup_state_topics(state_map)
 
+    async def mqtt_initial_publish(self, mqtt_client):
+        for state_key in self.state_map:
+            value = await self.node.sdo[state_key>>16][(state_key >> 8) & 0xff].aget_raw()
+            topic, mqtt_value = self.get_mqtt_state(state_key, value)
+            await mqtt_client.publish(topic, mqtt_value, retain=False)
+
 
 class CommandMixin:
     _mqtt_cmd_topic2entity = dict()
@@ -205,6 +211,8 @@ class Entity:
         else:
             logger.warning("\tunknown metadata property %s: %s", key, value)
 
+    async def mqtt_initial_publish(self, _mqtt_client):
+        pass
 
 class EntityRegistry:
     _by_type = {}
