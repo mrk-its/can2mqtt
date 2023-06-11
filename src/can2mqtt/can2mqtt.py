@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import logging
+import os
 import re
 import time
 from urllib.parse import urlparse
@@ -29,6 +30,8 @@ logger = logging.getLogger("can2mqtt.entities")
 
 
 TOPIC_RE = re.compile("([\w-]+)/can_([0-9a-fA-F]{1,7})/(.*)")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 async def async_try_iter_items(obj):
@@ -85,7 +88,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
     while True:
         for node_id in can_network.scanner.nodes:
             if not node_id in can_network:
-                od = import_od("eds/esphome.eds")
+                od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
                 node = can_network.add_node(node_id, od)
                 node.is_supported = False
                 node.is_operational = False

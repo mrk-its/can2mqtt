@@ -20,3 +20,6 @@ can2mqtt = "main:main"
 dev = [
     "black"
 ]
+
+[tool.setuptools.package-data]
+can2mqtt = ["eds/*.eds"]
