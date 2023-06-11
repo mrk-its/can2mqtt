@@ -274,6 +274,8 @@ class MinMaxValueMixin:
         value2 = value * (max_val - min_val + 1) // self.N_LEVELS + min_val
         return super().get_mqtt_state(state_key, value2)
 
+    # TODO: add scaling for commands in get_can_cmd
+
 
 @EntityRegistry.register
 class Sensor8(MinMaxValueMixin, StateMixin, Entity):
@@ -371,3 +373,40 @@ class Cover(StateMixin, CommandMixin, Entity):
         ("command_topic", CMDS.get, datatypes.UNSIGNED8),
         ("set_position_topic", lambda pos: int(pos) * 255 // 100, datatypes.UNSIGNED8),
     ]
+
+
+@EntityRegistry.register
+class Number(StateMixin, CommandMixin, Entity):
+    TYPE_ID = 8
+    TYPE_NAME = "number"
+    STATES = [
+        ("state_topic", str, datatypes.REAL32),
+    ]
+    COMMANDS = [
+        ("command_topic", float, datatypes.REAL32)
+    ]
+
+@EntityRegistry.register
+class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
+    TYPE_ID = 9
+    TYPE_NAME = "number"
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED8),
+    ]
+    COMMANDS = [
+        ("command_topic", int, datatypes.UNSIGNED8),
+    ]
+    N_LEVELS = 256
+
+
+@EntityRegistry.register
+class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
+    TYPE_ID = 10
+    TYPE_NAME = "number"
+    STATES = [
+        ("state_topic", str, datatypes.UNSIGNED16),
+    ]
+    COMMANDS = [
+        ("command_topic", int, datatypes.UNSIGNED16),
+    ]
+    N_LEVELS = 65536
