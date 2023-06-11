@@ -319,11 +319,13 @@ class Light(StateMixin, CommandMixin, Entity):
     STATES = [
         ("state_topic", bool2onoff, datatypes.UNSIGNED8),
         ("brightness_state_topic", str, datatypes.UNSIGNED8),
+        ("color_temp_state_topic", str, datatypes.UNSIGNED16),
     ]
 
     COMMANDS = [
         ("command_topic", onoff2bool, datatypes.UNSIGNED8),
         ("brightness_command_topic", int, datatypes.UNSIGNED8),
+        ("color_temp_command_topic", int, datatypes.UNSIGNED16),
     ]
 
     STATIC_PROPS = {"assumed_state": False}
