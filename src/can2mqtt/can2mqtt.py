@@ -3,6 +3,7 @@ import hashlib
 import logging
 import re
 import time
+from urllib.parse import urlparse
 
 import asyncio_mqtt as aiomqtt
 import canopen
@@ -337,10 +338,19 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
+    extra_auth = {}
+    if mqtt_server.startswith("mqtt://"):
+        parsed = urlparse(mqtt_server)
+        mqtt_server = parsed.hostname
+        extra_auth = dict(
+            username=parsed.username,
+            password=parsed.password,
+            port=int(parsed.port or 1883),
+        )
     will = aiomqtt.Will(
         get_can2mqtt_status_topic(mqtt_topic_prefix), b"offline", 1, retain=True
     )
-    async with aiomqtt.Client(mqtt_server, will=will) as mqtt_client:
+    async with aiomqtt.Client(mqtt_server, will=will, **extra_auth) as mqtt_client:
         try:
             await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
             can_network = canopen.Network()
