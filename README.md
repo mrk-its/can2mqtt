@@ -17,7 +17,7 @@ This project tries to fill the gap and provides tools for easy exposing ESPHome 
 
 ```
   $ python3 -m venv venv
-  $ venv/bin/pip install git+https://github.com/mrk-its/can2mqt
+  $ venv/bin/pip install git+https://github.com/mrk-its/can2mqtt
   $ venv/bin/can2mqtt --help
 
   usage: can2mqtt [-h] [-s MQTT_SERVER] [-i INTERFACE] [-c CHANNEL] [-b BITRATE] [-l LOG_LEVEL] [-t MQTT_TOPIC_PREFIX]
