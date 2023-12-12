@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import time
-from urllib.parse import urlparse
 
 import asyncio_mqtt as aiomqtt
 import canopen
@@ -17,6 +16,7 @@ from canopen.objectdictionary import (
     Variable,
 )
 
+from .utils import parse_mqtt_server_url
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
 
 
@@ -341,15 +341,7 @@ async def start(
     mqtt_topic_prefix,
     **kwargs,
 ):
-    extra_auth = {}
-    if mqtt_server.startswith("mqtt://"):
-        parsed = urlparse(mqtt_server)
-        mqtt_server = parsed.hostname
-        extra_auth = dict(
-            username=parsed.username,
-            password=parsed.password,
-            port=int(parsed.port or 1883),
-        )
+    mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
         get_can2mqtt_status_topic(mqtt_topic_prefix), b"offline", 1, retain=True
     )

@@ -16,6 +16,9 @@ dependencies = [
 [project.scripts]  # Optional
 can2mqtt = "main:main"
 
+[project.entry-points."can.interface"]
+mqtt_can = "mqtt_can:MqttCan"
+
 [project.optional-dependencies]
 dev = [
     "black"
