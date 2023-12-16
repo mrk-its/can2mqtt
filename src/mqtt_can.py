@@ -15,15 +15,18 @@ async def run(mqtt_server_url, bus):
 
     async with aiomqtt.Client(host_name, **extra_auth) as client:
         bus.client = client
-        await client.subscribe("from-canbus/#")
+        await client.subscribe("canbus/#")
         async with client.messages() as messages:
             async for message in messages:
+                _, src, can_id = message.topic.value.split("/")
+                if src == '2048':
+                    continue
                 can_msg = can.Message(
-                    arbitration_id=int(message.topic.value.split("/")[1], 16),
+                    arbitration_id=int(can_id),
                     is_extended_id=False,
                     data=message.payload,
                 )
-                logger.info("received %s %s, can_msg: %r", message.topic, message.payload, can_msg)
+                logger.debug("received %s %s, can_msg: %r", message.topic, message.payload, can_msg)
                 bus.queue.put(can_msg, block=True)
 
 
@@ -38,7 +41,7 @@ class MqttCan(can.bus.BusABC):
     def send(self, msg):
         logger.debug("send %r", msg)
         can_id = msg.arbitration_id
-        asyncio.create_task(self.client.publish(f"to-canbus/{can_id:x}", payload=msg.data, retain=False))
+        asyncio.create_task(self.client.publish(f"canbus/2048/{can_id}", payload=msg.data, retain=False))
 
     def _recv_internal(self, timeout=None):
         try:
@@ -46,6 +49,6 @@ class MqttCan(can.bus.BusABC):
         except queue.Empty:
             msg = None
         logger.debug("recv %r", msg)
-        return msg
+        return msg, True
 
 
