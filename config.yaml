@@ -1,0 +1,31 @@
+name: "can2mqtt"
+description: "can2mqtt gateway"
+version: "0.0.15"
+slug: "can2mqtt"
+init: false
+
+usb: true
+uart: true
+udev: true
+kernel_modules: true
+
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+
+options:
+  interface: null
+  channel: ''
+  bitrate: 125000
+  mqtt_server: mqtt://mqtt:mqtt@core-mosquitto
+  mqtt_topic_prefix: homeassistant
+
+schema:
+  interface: str
+  channel: str?
+  bitrate: int
+  mqtt_server: str
+  mqtt_topic_prefix: str?

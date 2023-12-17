@@ -341,13 +341,14 @@ async def start(
     mqtt_topic_prefix = 'homeassistant',
     **kwargs,
 ):
-    if interface == 'mqtt_can' and channel is None:
+    if interface == 'mqtt_can' and not channel:
         channel = mqtt_server
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
         get_can2mqtt_status_topic(mqtt_topic_prefix), b"offline", 1, retain=True
     )
+    logger.info("server: %s, extra_auth: %s", mqtt_server, extra_auth)
     async with aiomqtt.Client(mqtt_server, will=will, **extra_auth) as mqtt_client:
         try:
             await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
