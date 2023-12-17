@@ -334,13 +334,16 @@ async def publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, status):
 
 
 async def start(
-    mqtt_server,
-    interface,
-    channel,
-    bitrate,
-    mqtt_topic_prefix,
+    mqtt_server='localhost',
+    interface=None,
+    channel=None,
+    bitrate=125000,
+    mqtt_topic_prefix = 'homeassistant',
     **kwargs,
 ):
+    if interface == 'mqtt_can' and channel is None:
+        channel = mqtt_server
+
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
         get_can2mqtt_status_topic(mqtt_topic_prefix), b"offline", 1, retain=True
