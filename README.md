@@ -13,7 +13,12 @@ This project tries to fill the gap and provides tools for easy exposing ESPHome 
  * ESP32 board flashed with ESPHome firmware and configured [esphome-canopen](https://github.com/mrk-its/esphome-canopen) external component.
 ## Software requirements
  * MQTT Broker installed and configured in Home Assistant (with auto-discovery), take a look on [documentation](https://www.home-assistant.io/integrations/mqtt/) for details
-## Installation
+
+## Installation as HomeAssistant add-on
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fhome-assistant%2Faddons-example)
+
+## Manual installation
 
 ```
   $ python3 -m venv venv
