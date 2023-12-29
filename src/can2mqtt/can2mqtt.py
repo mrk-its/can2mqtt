@@ -5,7 +5,7 @@ import os
 import re
 import time
 
-import asyncio_mqtt as aiomqtt
+import aiomqtt
 import canopen
 from canopen.sdo.exceptions import SdoAbortedError
 from canopen.objectdictionary import (

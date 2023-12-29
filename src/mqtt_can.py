@@ -3,7 +3,7 @@ import logging
 import time
 import queue
 import can
-import asyncio_mqtt as aiomqtt
+import aiomqtt
 
 from can2mqtt.utils import parse_mqtt_server_url
 
