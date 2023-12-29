@@ -1,6 +1,6 @@
 name: "can2mqtt"
 description: "can2mqtt gateway"
-version: "0.1.2"
+version: "0.1.3-test1"
 slug: "can2mqtt"
 init: false
 

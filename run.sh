@@ -9,4 +9,4 @@ TIMEOUT=$(bashio::config 'sdo_response_timeout')
 TIMEOUT=$(test -n "$TIMEOUT" -a "$TIMEOUT" != null && echo "--sdo-response-timeout $TIMEOUT")
 
 set -x
-/app/venv/bin/can2mqtt -i "$INTERFACE" -s "$SERVER" -c "$CHANNEL" -b "$BITRATE" $TOPIC $TIMEOUT
+/bin/echo /app/venv/bin/can2mqtt -i "$INTERFACE" -s "$SERVER" -c "$CHANNEL" -b "$BITRATE" $TOPIC $TIMEOUT
