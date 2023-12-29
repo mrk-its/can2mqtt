@@ -7,7 +7,7 @@ import time
 
 import aiomqtt
 import canopen
-from canopen.sdo.exceptions import SdoAbortedError
+from canopen.sdo.exceptions import SdoAbortedError, SdoCommunicationError
 from canopen.objectdictionary import (
     ObjectDictionary,
     import_od,
@@ -55,7 +55,8 @@ async def async_try_iter_items(obj):
             raise
 
 
-async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
+async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
+
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
             logger.debug("heartbeat from %d: %s", node.id, status)
@@ -85,13 +86,116 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
             else:
                 logger.warning("no entity for node: %d, key: %08x", node_id, key)
 
+    try:
+        vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
+        product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
+    except SdoAbortedError as e:
+        logger.warning("can't read identity info, skipping")
+        return None
+    if (
+        vendor_id != ESPHOME_VENDOR_ID
+        or product_code != ESPHOME_PRODUCT_CODE
+    ):
+        logger.warning(
+            "vendor: %s, product: %s is not supported, skipping",
+            vendor_id,
+            product_code,
+        )
+        return False
+
+    node.device_name = await node.sdo["DeviceName"].aget_raw()
+
+    try:
+        node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
+    except SdoAbortedError as e:
+        pass
+    try:
+        node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+    except SdoAbortedError as e:
+        pass
+
+    try:
+        node.prod_heartbeat_time = await node.sdo[
+            "ProducerHeartbeatTime"
+        ].aget_raw()
+        node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
+    except SdoAbortedError as e:
+        pass
+
+    logger.info(
+        "node_id: %s device name: %s, heartbeat time (ms): %s",
+        node.id,
+        node.device_name,
+        node.prod_heartbeat_time,
+    )
+
+    entity = EntityRegistry.create(
+        0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix
+    )
+    node.ntm_state_entity = entity
+    entity.set_property("name", "NMT State")
+    await entity.publish_config(mqtt_client)
+    logger.info("  entity: %r", entity)
+
+    async for entity_index, entity_type in async_try_iter_items(
+        node.sdo["EntityTypes"]
+    ):
+        try:
+            entity = EntityRegistry.create(
+                entity_type,
+                node,
+                entity_index,
+                mqtt_topic_prefix=mqtt_topic_prefix,
+            )
+            logger.info("  entity: %r", entity)
+        except KeyError:
+            logger.warning(
+                "  Unknown entity type: %d, index: %d",
+                entity_type,
+                entity_index,
+            )
+            continue
+
+        base_index = 0x2000 + entity_index * 16
+        node.object_dictionary[base_index + 1] = Record(
+            "states", base_index + 1
+        )
+        node.object_dictionary[base_index + 2] = Record(
+            "cmds", base_index + 2
+        )
+
+        entity.setup_object_dictionary(node, base_index)
+
+        async for key, value in async_try_iter_items(node.sdo[base_index]):
+            entity.set_metadata_property(key, value)
+
+        await entity.publish_config(mqtt_client)
+
+    await asyncio.sleep(1.0)
+    for entity in Entity.entities():
+        await entity.mqtt_initial_publish(mqtt_client)
+
+    logger.debug("reading tpdo config")
+    await node.tpdo.aread()
+
+    for key, map in node.tpdo.map.items():
+        map.add_callback(on_tptd)
+
+    return True
+
+
+async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
     while True:
         for node_id in can_network.scanner.nodes:
             if not node_id in can_network:
                 od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
                 node = can_network.add_node(node_id, od)
-                node.is_supported = False
-                node.is_operational = False
+                if sdo_response_timeout is not None:
+                    node.sdo.RESPONSE_TIMEOUT = sdo_response_timeout
+                if sdo_max_retries is not None:
+                    node.sdo.MAX_RETRIES = sdo_max_retries
+
+                node.is_supported = None
 
                 node.last_heartbeat_time = time.time()
                 node.availability = None
@@ -99,127 +203,32 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix):
                     f"{mqtt_topic_prefix}/can_{node_id:03x}/availability"
                 )
                 node.prod_heartbeat_time = None
-                node.sdo.MAX_RETRIES = 3
                 node.sw_version = None
                 node.hw_version = None
                 node.device_name = None
                 node.ntm_state_entity = None
-                continue
 
             node = can_network[node_id]
-            if not node.is_operational and node.nmt.state == "OPERATIONAL":
-                node.is_operational = True
-
+            if node.is_supported is None and node.nmt.state == "OPERATIONAL":
                 try:
-                    vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
-                    product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
-                except SdoAbortedError as e:
-                    logger.warning("can't read identity info, skipping")
-                    continue
-                if (
-                    vendor_id != ESPHOME_VENDOR_ID
-                    or product_code != ESPHOME_PRODUCT_CODE
-                ):
-                    logger.warning(
-                        "vendor: %s, product: %s is not supported, skipping",
-                        vendor_id,
-                        product_code,
-                    )
-                    continue
+                    node.is_supported = await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
+                except SdoCommunicationError as e:
+                    logger.warning("%r", e)
+                except:
+                    logger.exception("unknown exception")
 
-                node.is_supported = True
-                node.device_name = await node.sdo["DeviceName"].aget_raw()
-
-                try:
-                    node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
-                except SdoAbortedError as e:
-                    pass
-                try:
-                    node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
-                except SdoAbortedError as e:
-                    pass
-
-                try:
-                    node.prod_heartbeat_time = await node.sdo[
-                        "ProducerHeartbeatTime"
-                    ].aget_raw()
-                    node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
-                except SdoAbortedError as e:
-                    pass
-
-                logger.info(
-                    "node_id: %s device name: %s, heartbeat time (ms): %s",
-                    node_id,
-                    node.device_name,
-                    node.prod_heartbeat_time,
+            if node.is_supported:
+                is_online = not node.prod_heartbeat_time or (
+                    (time.time() - node.last_heartbeat_time)
+                    < 2 * node.prod_heartbeat_time / 1000.0
                 )
-
-                entity = EntityRegistry.create(
-                    0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix
+                availability = "online" if is_online else "offline"
+                if node.availability != availability:
+                    logger.info("node %s is %s", node_id, availability)
+                    node.availability = availability
+                await mqtt_client.publish(
+                    node.availability_topic, payload=node.availability
                 )
-                node.ntm_state_entity = entity
-                entity.set_property("name", "NMT State")
-                await entity.publish_config(mqtt_client)
-                logger.info("  entity: %r", entity)
-
-                async for entity_index, entity_type in async_try_iter_items(
-                    node.sdo["EntityTypes"]
-                ):
-                    try:
-                        entity = EntityRegistry.create(
-                            entity_type,
-                            node,
-                            entity_index,
-                            mqtt_topic_prefix=mqtt_topic_prefix,
-                        )
-                        logger.info("  entity: %r", entity)
-                    except KeyError:
-                        logger.warning(
-                            "  Unknown entity type: %d, index: %d",
-                            entity_type,
-                            entity_index,
-                        )
-                        continue
-
-                    base_index = 0x2000 + entity_index * 16
-                    node.object_dictionary[base_index + 1] = Record(
-                        "states", base_index + 1
-                    )
-                    node.object_dictionary[base_index + 2] = Record(
-                        "cmds", base_index + 2
-                    )
-
-                    entity.setup_object_dictionary(node, base_index)
-
-                    async for key, value in async_try_iter_items(node.sdo[base_index]):
-                        entity.set_metadata_property(key, value)
-
-                    await entity.publish_config(mqtt_client)
-
-                await asyncio.sleep(1.0)
-                for entity in Entity.entities():
-                    await entity.mqtt_initial_publish(mqtt_client)
-
-                logger.debug("reading tpdo config")
-                await node.tpdo.aread()
-
-                for key, map in node.tpdo.map.items():
-                    map.add_callback(on_tptd)
-
-            if not node.is_supported:
-                continue
-
-            is_online = not node.prod_heartbeat_time or (
-                (time.time() - node.last_heartbeat_time)
-                < 2 * node.prod_heartbeat_time / 1000.0
-            )
-            availability = "online" if is_online else "offline"
-            if node.availability != availability:
-                logger.info("node %s is %s", node_id, availability)
-                node.availability = availability
-            await mqtt_client.publish(
-                node.availability_topic, payload=node.availability
-            )
 
         await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
         await asyncio.sleep(1.0)
@@ -339,10 +348,15 @@ async def start(
     channel=None,
     bitrate=125000,
     mqtt_topic_prefix = 'homeassistant',
+    sdo_response_timeout=None,
+    sdo_max_retries=None,
     **kwargs,
 ):
-    if interface == 'mqtt_can' and not channel:
-        channel = mqtt_server
+    if interface == 'mqtt_can':
+        if not channel:
+            channel = mqtt_server
+        if sdo_response_timeout is None:
+            sdo_response_timeout = 2.0
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
@@ -360,7 +374,11 @@ async def start(
             )
             await asyncio.gather(
                 can_reader(
-                    can_network, mqtt_client, mqtt_topic_prefix=mqtt_topic_prefix
+                    can_network,
+                    mqtt_client,
+                    mqtt_topic_prefix=mqtt_topic_prefix,
+                    sdo_response_timeout=sdo_response_timeout,
+                    sdo_max_retries=sdo_max_retries,
                 ),
                 mqtt_reader(
                     mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix

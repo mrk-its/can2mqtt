@@ -21,6 +21,8 @@ def main():
     parser.add_argument("-b", "--bitrate")
     parser.add_argument("-l", "--log-level", default="INFO")
     parser.add_argument("-t", "--mqtt-topic-prefix")
+    parser.add_argument("-d", "--sdo-response-timeout", type=float)
+    parser.add_argument("-r", "--sdo-max-retries", type=int)
     args = parser.parse_args()
 
     config_overrides = {
