@@ -76,7 +76,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
             entity = StateMixin.get_entity_by_node_state_key(node_id, key)
             if entity:
                 try:
-                    state_topic, value = entity.get_mqtt_state(key, v.get_raw())
+                    state_topic, value = entity.get_mqtt_state(key, await v.aget_raw())
                     await mqtt_client.publish(state_topic, payload=value, retain=False)
                     logger.debug(
                         "MQTT publish topic: %s value: %s - ok", state_topic, value
