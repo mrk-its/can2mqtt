@@ -271,7 +271,7 @@ class MinMaxValueMixin:
     def get_mqtt_state(self, state_key, value):
         min_val = self.props.get("min_value", 0)
         max_val = self.props.get("max_value", self.N_LEVELS - 1)
-        value2 = value * (max_val - min_val + 1) // self.N_LEVELS + min_val
+        value2 = value * (max_val - min_val + 1) / self.N_LEVELS + min_val
         return super().get_mqtt_state(state_key, value2)
 
     # TODO: add scaling for commands in get_can_cmd
