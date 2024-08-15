@@ -36,12 +36,13 @@ class MqttCan(can.bus.BusABC):
         self.client = None
         self.queue = queue.Queue(1000)
         self.channel_info = 'mqtt'
-        asyncio.create_task(run(channel, self))
+        self.loop = asyncio.get_running_loop()
+        self.loop.create_task(run(channel, self))
 
     def send(self, msg):
         logger.debug("send %r", msg)
         can_id = msg.arbitration_id
-        asyncio.create_task(self.client.publish(f"canbus/2048/{can_id}", payload=msg.data, retain=False))
+        self.loop.create_task(self.client.publish(f"canbus/2048/{can_id}", payload=msg.data, retain=False))
 
     def _recv_internal(self, timeout=None):
         try:
