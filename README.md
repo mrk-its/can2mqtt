@@ -58,5 +58,5 @@ In HomeAssistant you should see new entities like `switch.can_001_02`
 
 # Support
 
-* [Discord Server](https://discord.gg/f5UTFFnp)
+* [Discord Server](https://discord.gg/VXjUSnUWsd)
 
