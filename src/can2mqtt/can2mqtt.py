@@ -234,17 +234,23 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
         await asyncio.sleep(1.0)
 
 
-async def can_test_upload(can_network, node_id, payload):
+async def can_test_upload(can_network, node_id: int, payload):
     try:
         node = can_network.get(node_id)
         if node:
+            logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
+            t = time.time()
             firmware = node.sdo["Firmware"]
             await firmware["Firmware Size"].aset_raw(len(payload))
             await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
             await firmware["Firmware Data"].aset_raw(payload)
-            logger.info("successfuly uploaded %d bytes", len(payload))
+            dt = time.time() - t
+            logger.info(
+                "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
+                len(payload), node_id, dt, len(payload) / dt
+            )
         else:
-            logger.warning("node %s doesn't exist", node_id)
+            logger.warning("node %d doesn't exist", node_id)
     except Exception as e:
         logger.exception("firmware update error: %s", e)
 
@@ -306,7 +312,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         can_network.send_message(0, [cmd, int(node_id)])
                     case (node_id, "firmware", _):
                         asyncio.create_task(
-                            can_test_upload(can_network, node_id, message.payload)
+                            can_test_upload(can_network, int(node_id), message.payload)
                         )
                     case (node_id, "write", arg):
                         arg = arg[1:]
@@ -331,7 +337,9 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                                 )
                         except SdoAbortedError as e:
                             logger.error("sdo error: %s", e)
-
+                    case _:
+                        if m:
+                            logger.warning("unknown command: %s", m)
 
 def get_can2mqtt_status_topic(mqtt_topic_prefix):
     return f"{mqtt_topic_prefix}/can2mqtt/status"
