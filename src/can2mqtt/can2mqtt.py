@@ -243,7 +243,8 @@ async def can_test_upload(can_network, node_id: int, payload):
             firmware = node.sdo["Firmware"]
             await firmware["Firmware Size"].aset_raw(len(payload))
             await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
-            await firmware["Firmware Data"].aset_raw(payload)
+            logger.info("writing Firmware Data")
+            await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
             dt = time.time() - t
             logger.info(
                 "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
