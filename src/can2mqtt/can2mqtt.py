@@ -238,17 +238,22 @@ async def can_test_upload(can_network, node_id: int, payload):
     try:
         node = can_network.get(node_id)
         if node:
+            import zlib
             logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
             t = time.time()
             firmware = node.sdo["Firmware"]
             await firmware["Firmware Size"].aset_raw(len(payload))
             await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
-            logger.info("writing Firmware Data")
-            await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
+            logger.info("writing Firmware Data (block transfer)")
+            compressed = zlib.compress(payload)
+            logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
+            with open("/home/mrk/priv/inflate/test.dat", "wb") as f:
+                f.write(compressed)
+            await firmware["Firmware Data"].aset_data(compressed, block_transfer=True)
             dt = time.time() - t
             logger.info(
                 "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
-                len(payload), node_id, dt, len(payload) / dt
+                len(compressed), node_id, dt, len(compressed) / dt
             )
         else:
             logger.warning("node %d doesn't exist", node_id)
