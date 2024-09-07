@@ -2,6 +2,7 @@ from canopen.objectdictionary import datatypes
 from collections import defaultdict
 import logging
 import json
+import math
 from canopen.objectdictionary import Variable
 
 
@@ -243,12 +244,16 @@ class NMTStateSensor(Entity):
         return config
 
 
+def float_to_str(value):
+    return not math.isnan(value) and str(value) or ''
+
+
 @EntityRegistry.register
 class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
     STATES = [
-        ("state_topic", str, datatypes.REAL32),
+        ("state_topic", float_to_str, datatypes.REAL32),
     ]
 
 
@@ -269,9 +274,12 @@ class MinMaxValueMixin:
         node.object_dictionary[base_index].add_member(v)
 
     def get_mqtt_state(self, state_key, value):
-        min_val = self.props.get("min_value", 0)
-        max_val = self.props.get("max_value", self.N_LEVELS - 1)
-        value2 = value * (max_val - min_val + 1) / self.N_LEVELS + min_val
+        if value == self.N_LEVELS:
+            value2 = math.nan
+        else:
+            min_val = self.props.get("min_value", 0)
+            max_val = self.props.get("max_value", self.N_LEVELS - 1)
+            value2 = value * (max_val - min_val + 1) / self.N_LEVELS + min_val
         return super().get_mqtt_state(state_key, value2)
 
     # TODO: add scaling for commands in get_can_cmd
@@ -282,9 +290,9 @@ class Sensor8(MinMaxValueMixin, StateMixin, Entity):
     TYPE_ID = 6
     TYPE_NAME = "sensor"
     STATES = [
-        ("state_topic", str, datatypes.UNSIGNED8),
+        ("state_topic", float_to_str, datatypes.UNSIGNED8),
     ]
-    N_LEVELS = 256
+    N_LEVELS = 255
 
 
 @EntityRegistry.register
@@ -292,9 +300,9 @@ class Sensor16(MinMaxValueMixin, StateMixin, Entity):
     TYPE_ID = 7
     TYPE_NAME = "sensor"
     STATES = [
-        ("state_topic", str, datatypes.UNSIGNED16),
+        ("state_topic", float_to_str, datatypes.UNSIGNED16),
     ]
-    N_LEVELS = 65536
+    N_LEVELS = 65535
 
 
 @EntityRegistry.register
@@ -380,7 +388,7 @@ class Number(StateMixin, CommandMixin, Entity):
     TYPE_ID = 8
     TYPE_NAME = "number"
     STATES = [
-        ("state_topic", str, datatypes.REAL32),
+        ("state_topic", float_to_str, datatypes.REAL32),
     ]
     COMMANDS = [
         ("command_topic", float, datatypes.REAL32)
@@ -391,12 +399,12 @@ class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 9
     TYPE_NAME = "number"
     STATES = [
-        ("state_topic", str, datatypes.UNSIGNED8),
+        ("state_topic", float_to_str, datatypes.UNSIGNED8),
     ]
     COMMANDS = [
         ("command_topic", int, datatypes.UNSIGNED8),
     ]
-    N_LEVELS = 256
+    N_LEVELS = 255
 
 
 @EntityRegistry.register
@@ -404,9 +412,9 @@ class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 10
     TYPE_NAME = "number"
     STATES = [
-        ("state_topic", str, datatypes.UNSIGNED16),
+        ("state_topic", float_to_str, datatypes.UNSIGNED16),
     ]
     COMMANDS = [
         ("command_topic", int, datatypes.UNSIGNED16),
     ]
-    N_LEVELS = 65536
+    N_LEVELS = 65535
