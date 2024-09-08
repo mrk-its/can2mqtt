@@ -293,8 +293,6 @@ async def firmware_upload(can_network: Network, node_id: int, payload):
             logger.info("writing Firmware Data (block transfer)")
             compressed = zlib.compress(payload)
             logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
-            with open("/home/mrk/priv/inflate/test.dat", "wb") as f:
-                f.write(compressed)
             await firmware["Firmware Data"].aset_data(compressed, block_transfer=True)
             dt = time.time() - t
             logger.info(
