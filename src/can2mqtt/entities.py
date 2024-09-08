@@ -147,7 +147,11 @@ class Entity:
 
     @classmethod
     def entities(cls):
-        return cls._entities.values()
+        return list(cls._entities.values())
+
+    @classmethod
+    def remove_entity(cls, unique_id):
+        cls._entities.pop(unique_id, None)
 
     async def publish_config(self, mqtt_client):
         config_topic = self.get_mqtt_config_topic()
@@ -155,6 +159,12 @@ class Entity:
         logger.debug("mqtt config_topic: %r, payload: %r", config_topic, config_payload)
         await mqtt_client.publish(
             config_topic, payload=json.dumps(config_payload), retain=False
+        )
+
+    async def remove_config(self, mqtt_client):
+        config_topic = self.get_mqtt_config_topic()
+        await mqtt_client.publish(
+            config_topic, payload=b'', retain=False
         )
 
     def set_property(self, key, value):

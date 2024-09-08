@@ -59,13 +59,20 @@ async def async_try_iter_items(obj):
             raise
 
 
-async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
+async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
+
+    def reload_node(node):
+        logger.info("reloading node %s", node.id)
+        node.is_initialized = False
+        for _, map in node.tpdo.map.items():
+            map.clear()
+            map.callbacks.clear()  # probably above clear should do that??
 
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
             logger.debug("heartbeat from %d: %s", node.id, status)
             if status == 0:
-                node.is_initialized = False
+                reload_node(node)
             node.last_heartbeat_time = time.time()
             if node.ntm_state_entity:
                 state_topic = node.ntm_state_entity.get_state_topic()
@@ -92,22 +99,6 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
                 logger.warning("no entity for node: %d, key: %08x", node_id, key)
 
     try:
-        sw_version = await node.sdo["SoftwareVersion"].aget_raw()
-    except SdoAbortedError as e:
-        sw_version = None
-
-    if node.sw_version:
-        if node.sw_version == sw_version:
-            # node was initialized before and sw_version didn't change
-            node.is_initialized = True
-            logger.info("node %s: sw_version didn't change, skipping initialization", node.id)
-            return
-        else:
-            logger.info("node %s: new version, reinitializing", node.id)
-
-    node.sw_version = sw_version
-
-    try:
         vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
         product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
     except SdoAbortedError as e:
@@ -125,6 +116,20 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
         node.is_initialized = True
         return
 
+    try:
+        sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+    except SdoAbortedError as e:
+        sw_version = None
+
+    # if node.sw_version:
+    #     if node.sw_version == sw_version:
+    #         # node was initialized before and sw_version didn't change
+    #         node.is_initialized = True
+    #         logger.info("node %s: sw_version didn't change, skipping initialization", node.id)
+    #         return
+    #     else:
+    #         logger.info("node %s: new version, reinitializing", node.id)
+
     node.device_name = await node.sdo["DeviceName"].aget_raw()
 
     try:
@@ -136,7 +141,9 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
         node.prod_heartbeat_time = await node.sdo[
             "ProducerHeartbeatTime"
         ].aget_raw()
-        node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
+        if not node.has_nmt_callback:
+            node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
+            node.has_nmt_callback = True
     except SdoAbortedError as e:
         pass
 
@@ -158,6 +165,8 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
     await entity.publish_config(mqtt_client)
     logger.info("  entity: %r", entity)
 
+    node_entity_ids = set()
+
     async for entity_index, entity_type in async_try_iter_items(
         node.sdo["EntityTypes"]
     ):
@@ -168,6 +177,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
                 entity_index,
                 mqtt_topic_prefix=mqtt_topic_prefix,
             )
+            node_entity_ids.add(entity.unique_id)           
             logger.info("  entity: %r", entity)
         except KeyError:
             logger.warning(
@@ -194,14 +204,26 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
 
     await asyncio.sleep(1.0)
     for entity in Entity.entities():
-        await entity.mqtt_initial_publish(mqtt_client)
+        if not entity.entity_index:
+            continue  # skip NMT State entity
+        if entity.node.id == node.id:
+            if entity.unique_id in node_entity_ids:
+                await entity.mqtt_initial_publish(mqtt_client)
+            else:
+                await entity.remove_config(mqtt_client)
+                Entity.remove_entity(entity.unique_id)
+
+    for _, map in node.tpdo.map.items():
+        map.clear()
+        map.callbacks.clear()  # probably above clear should do that??
 
     logger.debug("reading tpdo config")
     await node.tpdo.aread()
 
-    for key, map in node.tpdo.map.items():
+    for _, map in node.tpdo.map.items():
         map.add_callback(on_tptd)
 
+    node.sw_version = sw_version
     node.is_initialized = True
 
 
@@ -230,6 +252,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                 node.hw_version = None
                 node.device_name = None
                 node.ntm_state_entity = None
+                node.has_nmt_callback = False
 
             if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
