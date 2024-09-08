@@ -60,13 +60,14 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
             logger.debug("heartbeat from %d: %s", node.id, status)
+            if status == 0:
+                node.is_initialized = False
             node.last_heartbeat_time = time.time()
             if node.ntm_state_entity:
                 state_topic = node.ntm_state_entity.get_state_topic()
                 asyncio.create_task(
                     mqtt_client.publish(state_topic, payload=str(status), retain=False)
                 )
-
         return on_heartbeat
 
     async def on_tptd(map):
@@ -87,30 +88,43 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
                 logger.warning("no entity for node: %d, key: %08x", node_id, key)
 
     try:
+        sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+    except SdoAbortedError as e:
+        sw_version = None
+
+    if node.sw_version:
+        if node.sw_version == sw_version:
+            # node was initialized before and sw_version didn't change
+            node.is_initialized = True
+            logger.info("node %s: sw_version didn't change, skipping initialization", node.id)
+            return
+        else:
+            logger.info("node %s: new version, reinitializing", node.id)
+
+    node.sw_version = sw_version
+
+    try:
         vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
         product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
     except SdoAbortedError as e:
         logger.warning("can't read identity info, skipping")
         return None
-    if (
-        vendor_id != ESPHOME_VENDOR_ID
-        or product_code != ESPHOME_PRODUCT_CODE
-    ):
+    
+    node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
+
+    if not node.is_supported:
         logger.warning(
             "vendor: %s, product: %s is not supported, skipping",
             vendor_id,
             product_code,
         )
-        return False
+        node.is_initialized = True
+        return
 
     node.device_name = await node.sdo["DeviceName"].aget_raw()
 
     try:
         node.hw_version = await node.sdo["HardwareVersion"].aget_raw()
-    except SdoAbortedError as e:
-        pass
-    try:
-        node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
     except SdoAbortedError as e:
         pass
 
@@ -122,12 +136,15 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
     except SdoAbortedError as e:
         pass
 
-    logger.info(
-        "node_id: %s device name: %s, heartbeat time (ms): %s",
-        node.id,
-        node.device_name,
-        node.prod_heartbeat_time,
-    )
+    props = [
+        ("node_id", node.id),
+        ("device name", node.device_name),
+        ("heartbeat time (ms)", node.prod_heartbeat_time)
+    ]
+    if node.sw_version:
+        props.append(("ver", node.sw_version))
+
+    logger.info(", ".join(f"{k}: {v}" for k, v in props))
 
     entity = EntityRegistry.create(
         0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix
@@ -181,21 +198,23 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network, node):
     for key, map in node.tpdo.map.items():
         map.add_callback(on_tptd)
 
-    return True
+    node.is_initialized = True
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
+    od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
     while True:
         for node_id in can_network.scanner.nodes:
-            if not node_id in can_network:
-                od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
+            node = can_network.get(node_id)
+            if not node:
                 node = can_network.add_node(node_id, od)
                 if sdo_response_timeout is not None:
                     node.sdo.RESPONSE_TIMEOUT = sdo_response_timeout
                 if sdo_max_retries is not None:
                     node.sdo.MAX_RETRIES = sdo_max_retries
 
-                node.is_supported = None
+                node.is_initialized = False  # basic initialization was done, reset on node reboot
+                node.is_supported = False  # it is ESPHome node
 
                 node.last_heartbeat_time = time.time()
                 node.availability = None
@@ -208,10 +227,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                 node.device_name = None
                 node.ntm_state_entity = None
 
-            node = can_network[node_id]
-            if node.is_supported is None and node.nmt.state == "OPERATIONAL":
+            if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
-                    node.is_supported = await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
+                    await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
                 except SdoCommunicationError as e:
                     logger.warning("%r", e)
                 except:
