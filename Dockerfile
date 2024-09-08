@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-RUN apk add --no-cache py3-pip py3-virtualenv git
+RUN apk add --no-cache py3-pip py3-virtualenv git g++ make python3-dev
 COPY ./ /app/
 
 RUN python3 -m venv /app/venv

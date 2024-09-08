@@ -9,6 +9,8 @@ uart: true
 udev: true
 kernel_modules: true
 
+image: mrkits/image-{arch}-can2mqtt
+
 arch:
   - aarch64
   - amd64
