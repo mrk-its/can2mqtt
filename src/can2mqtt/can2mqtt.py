@@ -7,6 +7,10 @@ import time
 
 import aiomqtt
 import canopen
+from canopen.network import Network
+from canopen.node import RemoteNode
+from canopen.nmt import NMT_COMMANDS
+
 from canopen.sdo.exceptions import SdoAbortedError, SdoCommunicationError
 from canopen.objectdictionary import (
     ObjectDictionary,
@@ -252,10 +256,11 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
         await asyncio.sleep(1.0)
 
 
-async def can_test_upload(can_network, node_id: int, payload):
+async def firmware_upload(can_network: Network, node_id: int, payload):
     try:
-        node = can_network.get(node_id)
+        node: RemoteNode = can_network.get(node_id)
         if node:
+            node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
             import zlib
             logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
             t = time.time()
@@ -336,7 +341,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         can_network.send_message(0, [cmd, int(node_id)])
                     case (node_id, "firmware", _):
                         asyncio.create_task(
-                            can_test_upload(can_network, int(node_id), message.payload)
+                            firmware_upload(can_network, int(node_id), message.payload)
                         )
                     case (node_id, "write", arg):
                         arg = arg[1:]
