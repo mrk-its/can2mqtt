@@ -414,7 +414,7 @@ async def start(
         if not channel:
             channel = mqtt_server
         if sdo_response_timeout is None:
-            sdo_response_timeout = 0.3
+            sdo_response_timeout = 2.0
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
