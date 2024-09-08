@@ -1763,9 +1763,9 @@ DataType=9
 AccessType=R
 
 [2010sub3]
-ParameterName=Entity01_Unit
+ParameterName=Entity01_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2010sub4]
@@ -1799,9 +1799,9 @@ DataType=9
 AccessType=R
 
 [2020sub3]
-ParameterName=Entity02_Unit
+ParameterName=Entity02_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2020sub4]
@@ -1835,9 +1835,9 @@ DataType=9
 AccessType=R
 
 [2030sub3]
-ParameterName=Entity03_Unit
+ParameterName=Entity03_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2030sub4]
@@ -1871,9 +1871,9 @@ DataType=9
 AccessType=R
 
 [2040sub3]
-ParameterName=Entity04_Unit
+ParameterName=Entity04_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2040sub4]
@@ -1907,9 +1907,9 @@ DataType=9
 AccessType=R
 
 [2050sub3]
-ParameterName=Entity05_Unit
+ParameterName=Entity05_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2050sub4]
@@ -1943,9 +1943,9 @@ DataType=9
 AccessType=R
 
 [2060sub3]
-ParameterName=Entity06_Unit
+ParameterName=Entity06_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2060sub4]
@@ -1979,9 +1979,9 @@ DataType=9
 AccessType=R
 
 [2070sub3]
-ParameterName=Entity07_Unit
+ParameterName=Entity07_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2070sub4]
@@ -2015,9 +2015,9 @@ DataType=9
 AccessType=R
 
 [2080sub3]
-ParameterName=Entity08_Unit
+ParameterName=Entity08_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2080sub4]
@@ -2051,9 +2051,9 @@ DataType=9
 AccessType=R
 
 [2090sub3]
-ParameterName=Entity09_Unit
+ParameterName=Entity09_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2090sub4]
@@ -2087,9 +2087,9 @@ DataType=9
 AccessType=R
 
 [20a0sub3]
-ParameterName=Entity0a_Unit
+ParameterName=Entity0a_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20a0sub4]
@@ -2123,9 +2123,9 @@ DataType=9
 AccessType=R
 
 [20b0sub3]
-ParameterName=Entity0b_Unit
+ParameterName=Entity0b_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20b0sub4]
@@ -2159,9 +2159,9 @@ DataType=9
 AccessType=R
 
 [20c0sub3]
-ParameterName=Entity0c_Unit
+ParameterName=Entity0c_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20c0sub4]
@@ -2195,9 +2195,9 @@ DataType=9
 AccessType=R
 
 [20d0sub3]
-ParameterName=Entity0d_Unit
+ParameterName=Entity0d_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20d0sub4]
@@ -2231,9 +2231,9 @@ DataType=9
 AccessType=R
 
 [20e0sub3]
-ParameterName=Entity0e_Unit
+ParameterName=Entity0e_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20e0sub4]
@@ -2267,9 +2267,9 @@ DataType=9
 AccessType=R
 
 [20f0sub3]
-ParameterName=Entity0f_Unit
+ParameterName=Entity0f_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [20f0sub4]
@@ -2303,9 +2303,9 @@ DataType=9
 AccessType=R
 
 [2100sub3]
-ParameterName=Entity10_Unit
+ParameterName=Entity10_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2100sub4]
@@ -2339,9 +2339,9 @@ DataType=9
 AccessType=R
 
 [2110sub3]
-ParameterName=Entity11_Unit
+ParameterName=Entity11_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2110sub4]
@@ -2375,9 +2375,9 @@ DataType=9
 AccessType=R
 
 [2120sub3]
-ParameterName=Entity12_Unit
+ParameterName=Entity12_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2120sub4]
@@ -2411,9 +2411,9 @@ DataType=9
 AccessType=R
 
 [2130sub3]
-ParameterName=Entity13_Unit
+ParameterName=Entity13_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2130sub4]
@@ -2447,9 +2447,9 @@ DataType=9
 AccessType=R
 
 [2140sub3]
-ParameterName=Entity14_Unit
+ParameterName=Entity14_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2140sub4]
@@ -2483,9 +2483,9 @@ DataType=9
 AccessType=R
 
 [2150sub3]
-ParameterName=Entity15_Unit
+ParameterName=Entity15_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2150sub4]
@@ -2519,9 +2519,9 @@ DataType=9
 AccessType=R
 
 [2160sub3]
-ParameterName=Entity16_Unit
+ParameterName=Entity16_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2160sub4]
@@ -2555,9 +2555,9 @@ DataType=9
 AccessType=R
 
 [2170sub3]
-ParameterName=Entity17_Unit
+ParameterName=Entity17_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2170sub4]
@@ -2591,9 +2591,9 @@ DataType=9
 AccessType=R
 
 [2180sub3]
-ParameterName=Entity18_Unit
+ParameterName=Entity18_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2180sub4]
@@ -2627,9 +2627,9 @@ DataType=9
 AccessType=R
 
 [2190sub3]
-ParameterName=Entity19_Unit
+ParameterName=Entity19_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2190sub4]
@@ -2663,9 +2663,9 @@ DataType=9
 AccessType=R
 
 [21a0sub3]
-ParameterName=Entity1a_Unit
+ParameterName=Entity1a_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21a0sub4]
@@ -2699,9 +2699,9 @@ DataType=9
 AccessType=R
 
 [21b0sub3]
-ParameterName=Entity1b_Unit
+ParameterName=Entity1b_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21b0sub4]
@@ -2735,9 +2735,9 @@ DataType=9
 AccessType=R
 
 [21c0sub3]
-ParameterName=Entity1c_Unit
+ParameterName=Entity1c_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21c0sub4]
@@ -2771,9 +2771,9 @@ DataType=9
 AccessType=R
 
 [21d0sub3]
-ParameterName=Entity1d_Unit
+ParameterName=Entity1d_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21d0sub4]
@@ -2807,9 +2807,9 @@ DataType=9
 AccessType=R
 
 [21e0sub3]
-ParameterName=Entity1e_Unit
+ParameterName=Entity1e_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21e0sub4]
@@ -2843,9 +2843,9 @@ DataType=9
 AccessType=R
 
 [21f0sub3]
-ParameterName=Entity1f_Unit
+ParameterName=Entity1f_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [21f0sub4]
@@ -2879,9 +2879,9 @@ DataType=9
 AccessType=R
 
 [2200sub3]
-ParameterName=Entity20_Unit
+ParameterName=Entity20_UnitOfMeasurement
 ObjectType=7
-DataType=0xb
+DataType=9
 AccessType=R
 
 [2200sub4]

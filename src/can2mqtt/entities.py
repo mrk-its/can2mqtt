@@ -122,7 +122,7 @@ class CommandMixin:
 COMMON_METADATA_PROPERTIES = {
     1: "name",
     2: "device_class",
-    3: "unit",
+    3: "unit_of_measurement",
     4: "state_class",
 }
 
