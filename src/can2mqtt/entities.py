@@ -433,6 +433,11 @@ class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
 ALARM_COMMANDS = {
     b"DISARM": 0,
     b"ARM_AWAY": 1,
+    b"ARM_HOME": 2,
+    b"ARM_NIGHT": 3,
+    b"ARM_VACATION": 4,
+    b"ARM_CUSTOM_BYPASS": 5,
+    b"ARM_TRIGGER": 127,
 }
 
 ALARM_STATES = {
@@ -465,5 +470,4 @@ class Alarm(StateMixin, CommandMixin, Entity):
         "code_arm_required": False,
         "code_disarm_requried": False,
         "code_trigger_required": False,
-        "supported_features": ["arm_away", "trigger"]
     }
