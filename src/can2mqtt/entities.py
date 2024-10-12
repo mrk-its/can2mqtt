@@ -428,3 +428,42 @@ class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
         ("command_topic", int, datatypes.UNSIGNED16),
     ]
     N_LEVELS = 65535
+
+
+ALARM_COMMANDS = {
+    b"DISARM": 0,
+    b"ARM_AWAY": 1,
+}
+
+ALARM_STATES = {
+    0: b"disarmed",
+    1: b"armed_home",
+    2: b"armed_away",
+    3: b"armed_night",
+    4: b"armed_vacation",
+    5: b"armed_custom_bypass",
+    6: b"pending",
+    7: b"arming",
+    8: b"disarming",
+    9: b"triggered",
+}
+
+
+@EntityRegistry.register
+class Alarm(StateMixin, CommandMixin, Entity):
+    TYPE_ID = 16
+    TYPE_NAME = "alarm_control_panel"
+
+    STATES = [
+        ("state_topic", ALARM_STATES.get, datatypes.UNSIGNED8),
+    ]
+    COMMANDS = [
+        ("command_topic", ALARM_COMMANDS.get, datatypes.UNSIGNED8),
+    ]
+    STATIC_PROPS = {
+        "assumed_state": False,
+        "code_arm_required": False,
+        "code_disarm_requried": False,
+        "code_trigger_required": False,
+        "supported_features": ["arm_away", "trigger"]
+    }
