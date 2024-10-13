@@ -437,7 +437,7 @@ ALARM_COMMANDS = {
     b"ARM_NIGHT": 3,
     b"ARM_VACATION": 4,
     b"ARM_CUSTOM_BYPASS": 5,
-    b"ARM_TRIGGER": 127,
+    b"TRIGGER": 127,
 }
 
 ALARM_STATES = {
