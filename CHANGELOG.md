@@ -1,11 +1,3 @@
-<a name="v0.1.8-b1"></a>
-# [v0.1.8-b1](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.8-b1) - 22 Sep 2024
-
-* test entry
-**Full Changelog**: https://github.com/mrk-its/can2mqtt/commits/v0.1.8
-
-[Changes][v0.1.8-b1]
-
 
 <a name="v0.1.9-b3"></a>
 # [v0.1.9-b3](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9-b3) - 15 Oct 2024
