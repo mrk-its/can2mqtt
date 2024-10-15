@@ -12,11 +12,11 @@ kernel_modules: true
 image: mrkits/image-{arch}-can2mqtt
 
 arch:
-  #  - aarch64
+  - aarch64
   - amd64
-    #  - armhf
-    #  - armv7
-    #  - i386
+  - armhf
+  - armv7
+  - i386
 
 options:
   interface: null
