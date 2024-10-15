@@ -1,6 +1,6 @@
 name: "can2mqtt"
 description: "can2mqtt gateway"
-version: "0.1.9-b3"
+version: "0.1.9-b4"
 slug: "can2mqtt"
 init: false
 
@@ -8,6 +8,9 @@ usb: true
 uart: true
 udev: true
 kernel_modules: true
+host_network: true
+privileged:
+  - NET_ADMIN
 
 image: mrkits/image-{arch}-can2mqtt
 
