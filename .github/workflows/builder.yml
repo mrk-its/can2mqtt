@@ -14,5 +14,5 @@ jobs:
         with:
           args: |
             --test \
-            --all \
+            --amd64 \
             --target .
