@@ -21,4 +21,4 @@ jobs:
         with:
           args: |
             --all \
-            --target addon-folder
+            --target .
