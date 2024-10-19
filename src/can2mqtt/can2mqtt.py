@@ -325,7 +325,7 @@ async def firmware_upload(can_network: Network, node_id: int, payload):
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
-    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_(\d+)/(nmt|firmware|write)(/.*)?$")
+    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$")
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
@@ -378,15 +378,26 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     case (node_id, "nmt", _):
                         cmd = int(message.payload.decode("utf-8"))
                         logger.info("sent nmt command %d to node %s", cmd, node_id)
-                        can_network.send_message(0, [cmd, int(node_id)])
+                        can_network.send_message(0, [cmd, int(node_id, 16)])
+                    case (node_id, "update", _):
+                        node_id = int(node_id, 16)
+                        node = can_network.get(node_id)
+                        node.update_entity.disable_upload = True
+                        await node.update_entity.publish_config(mqtt_client)
+                        rev, path = FIRMWARE_MAP[node_id]
+                        logger.info("firmware update, node_id: %s, rev: %s, path: %s", node_id, rev, path)
+                        with open(path, "rb") as f:
+                            asyncio.create_task(
+                                firmware_upload(can_network, node_id, f.read())
+                            )
                     case (node_id, "firmware", _):
                         asyncio.create_task(
-                            firmware_upload(can_network, int(node_id), message.payload)
+                            firmware_upload(can_network, int(node_id, 16), message.payload)
                         )
                     case (node_id, "write", arg):
                         arg = arg[1:]
                         try:
-                            node_id = int(node_id)
+                            node_id = int(node_id, 16)
                             dest = [int(i, 16) for i in arg.split(":")]
                             index = dest[0]
                             start_subidx = dest[1] if len(dest) > 1 else 0

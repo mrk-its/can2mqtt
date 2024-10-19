@@ -245,11 +245,13 @@ class Update(Entity):
         ("state_topic", str, str),
     ]
 
+    disable_upload = False
+
     def get_state_topic(self):
-        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_update"
+        return f"{self.mqtt_topic_prefix}/node_state_{self.node.id:03x}/update"
 
     def get_command_topic(self):
-        return f"{self.mqtt_topic_prefix}/can_cmd_{self.node.id:03x}_update"
+        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update"
 
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
@@ -258,7 +260,8 @@ class Update(Entity):
         config["device_class"] = "firmware"
         config["name"] = "Update"
         config["connections"] = [["foo", self.unique_id]]
-        config["command_topic"] = self.get_command_topic()
+        if not self.disable_upload:
+            config["command_topic"] = self.get_command_topic()
         config["payload_install"] = "install"
         return config
 
