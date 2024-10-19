@@ -1,6 +1,6 @@
 name: "can2mqtt"
 description: "can2mqtt gateway"
-version: "0.1.9-b4"
+version: "0.1.9-b5"
 slug: "can2mqtt"
 init: false
 
@@ -21,12 +21,16 @@ arch:
   - armv7
   - i386
 
+map:
+  - addon_config
+
 options:
   interface: null
   channel: ''
   bitrate: 125000
   mqtt_server: mqtt://mqtt:mqtt@core-mosquitto
   mqtt_topic_prefix: homeassistant
+  firmware_dir: /addon_configs/can2mqtt
 
 schema:
   interface: str
@@ -35,3 +39,4 @@ schema:
   mqtt_server: str
   mqtt_topic_prefix: str?
   sdo_response_timeout: float?
+  firmware_dir: str?

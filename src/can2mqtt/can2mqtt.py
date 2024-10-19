@@ -1,12 +1,15 @@
 import asyncio
 import hashlib
+from collections import defaultdict
 import logging
+import json
 import os
 import re
 import time
 
 import aiomqtt
 import canopen
+
 from canopen.network import Network
 from canopen.node import RemoteNode
 from canopen.nmt import NMT_COMMANDS
@@ -22,6 +25,7 @@ from canopen.objectdictionary import (
 
 from .utils import parse_mqtt_server_url
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
+from . import firmware_scanner
 
 
 CODE_SUBINDEX_NOT_FOUND = 0x06090011
@@ -36,6 +40,9 @@ logger = logging.getLogger("can2mqtt.entities")
 TOPIC_RE = re.compile("([\w-]+)/can_([0-9a-fA-F]{1,7})/(.*)")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+FIRMWARE_MAP = defaultdict(lambda: (None, None))
 
 
 async def async_try_iter_items(obj):
@@ -165,6 +172,14 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
     await entity.publish_config(mqtt_client)
     logger.info("  entity: %r", entity)
 
+    update_entity = EntityRegistry.create(
+        -1, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
+    )
+    node.update_entity = update_entity
+    update_entity.set_property("name", "Update")
+    await update_entity.publish_config(mqtt_client)
+    logger.info("  entity: %r", update_entity)
+
     node_entity_ids = set()
 
     async for entity_index, entity_type in async_try_iter_items(
@@ -204,7 +219,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
     await asyncio.sleep(1.0)
     for entity in Entity.entities():
-        if not entity.entity_index:
+        if entity.entity_index in (0, 255):
             continue  # skip NMT State entity
         if entity.node.id == node.id:
             if entity.unique_id in node_entity_ids:
@@ -224,6 +239,10 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
         map.add_callback(on_tptd)
 
     node.sw_version = sw_version
+
+    rev, _ = FIRMWARE_MAP[node.id]
+    await node.update_entity.publish_version(mqtt_client, rev)
+
     node.is_initialized = True
 
 
@@ -400,6 +419,32 @@ async def publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, status):
     await mqtt_client.publish(status_topic, payload=status, retain=False)
 
 
+class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
+    def __init__(self, can_network, mqtt_client):
+        super().__init__()
+        self.can_network = can_network
+        self.mqtt_client = mqtt_client
+
+    def publish_version(self, node_id, ver):
+        node = self.can_network.get(node_id)
+        if node:
+            asyncio.create_task(node.update_entity.publish_version(self.mqtt_client, ver))
+
+    def on_delete_firmware(self, path):
+        logger.info("remove firmware: %s", path)
+        for node_id, (rev, _path) in FIRMWARE_MAP.items():
+            print(node_id, rev, _path)
+            if _path == path:
+                return self.publish_version(node_id, None)
+
+    def on_new_firmware(self, path, node_id, ver):
+        logger.info("new_firmware: %s, node_id: %s, ver: %s", path, node_id, ver)
+        _ver, _ = FIRMWARE_MAP[node_id]
+        if not _ver or _ver < ver:
+            FIRMWARE_MAP[node_id] = (ver, path)
+        self.publish_version(node_id, ver)
+
+
 async def start(
     mqtt_server='localhost',
     interface=None,
@@ -408,6 +453,7 @@ async def start(
     mqtt_topic_prefix = 'homeassistant',
     sdo_response_timeout=None,
     sdo_max_retries=None,
+    firmware_dir=None,
     **kwargs,
 ):
     if interface == 'mqtt_can':
@@ -430,6 +476,10 @@ async def start(
             can_network.connect(
                 loop=loop, interface=interface, channel=channel, bitrate=bitrate
             )
+
+            if firmware_dir:
+                firmware_scanner.init(loop, firmware_dir, FirmwareHandler(can_network, mqtt_client))
+
             await asyncio.gather(
                 can_reader(
                     can_network,

@@ -238,6 +238,41 @@ class EntityRegistry:
 
 
 @EntityRegistry.register
+class Update(Entity):
+    TYPE_ID = -1
+    TYPE_NAME = "update"
+    STATES = [
+        ("state_topic", str, str),
+    ]
+
+    def get_state_topic(self):
+        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_update"
+
+    def get_command_topic(self):
+        return f"{self.mqtt_topic_prefix}/can_cmd_{self.node.id:03x}_update"
+
+    def get_mqtt_config(self):
+        config = super().get_mqtt_config()
+        config["state_topic"] = self.get_state_topic()
+
+        config["device_class"] = "firmware"
+        config["name"] = "Update"
+        config["connections"] = [["foo", self.unique_id]]
+        config["command_topic"] = self.get_command_topic()
+        config["payload_install"] = "install"
+        return config
+
+    async def publish_version(self, mqtt_client, ver):
+        state_topic = self.get_state_topic()
+        payload = json.dumps({
+            "installed_version": self.node.sw_version,
+            "latest_version": ver or self.node.sw_version
+        })
+        logger.info("publish_version: %s", payload)
+        await mqtt_client.publish(state_topic, payload=payload, retain=False)
+
+
+@EntityRegistry.register
 class NMTStateSensor(Entity):
     TYPE_ID = 0
     TYPE_NAME = "sensor"
