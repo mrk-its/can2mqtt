@@ -1,3 +1,11 @@
+<a id="v0.1.9"></a>
+# [v0.1.9](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9) - 2024-10-19
+
+**Full Changelog**: https://github.com/mrk-its/can2mqtt/compare/v0.1.8...v0.1.9
+
+[Changes][v0.1.9]
+
+
 <a id="v0.1.9-b7"></a>
 # [v0.1.9-b7](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9-b7) - 2024-10-19
 
@@ -80,6 +88,7 @@
 [Changes][v0.1.8-b1]
 
 
+[v0.1.9]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b7...v0.1.9
 [v0.1.9-b7]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b6...v0.1.9-b7
 [v0.1.9-b6]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b5...v0.1.9-b6
 [v0.1.9-b5]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b4...v0.1.9-b5
