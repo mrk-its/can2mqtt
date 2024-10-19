@@ -30,7 +30,7 @@ options:
   bitrate: 125000
   mqtt_server: mqtt://mqtt:mqtt@core-mosquitto
   mqtt_topic_prefix: homeassistant
-  firmware_dir: /addon_configs/can2mqtt
+  firmware_dir: /config
 
 schema:
   interface: str
