@@ -1,3 +1,12 @@
+<a id="v0.1.9.1"></a>
+# [v0.1.9.1](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9.1) - 2024-10-20
+
+- update entity: do not show install when can ota is not enabled
+**Full Changelog**: https://github.com/mrk-its/can2mqtt/compare/v0.1.9...v0.1.9.1
+
+[Changes][v0.1.9.1]
+
+
 <a id="v0.1.9"></a>
 # [v0.1.9](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9) - 2024-10-19
 
@@ -88,6 +97,7 @@
 [Changes][v0.1.8-b1]
 
 
+[v0.1.9.1]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9...v0.1.9.1
 [v0.1.9]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b7...v0.1.9
 [v0.1.9-b7]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b6...v0.1.9-b7
 [v0.1.9-b6]: https://github.com/mrk-its/can2mqtt/compare/v0.1.9-b5...v0.1.9-b6
