@@ -375,7 +375,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     subidx = (cmd_key >> 8) & 255
                     idx = cmd_key >> 16
                     var = entity.node.sdo[idx]
-                    logger.info("od[%04x]: %r %r", idx, var, var.od)
+                    logger.info("od[%04x]: %r od: %r names: %r subindices: %r", idx, var, var.od, var.od.names, var.od.subindices)
                     if subidx:
                         var = var[subidx]
                         logger.info("subidx: %d, var: %r", subidx, var)
