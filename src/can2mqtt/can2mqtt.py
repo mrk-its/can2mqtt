@@ -365,19 +365,22 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     cmd_key, value = entity.get_can_cmd(
                         message.topic.value, message.payload
                     )
-                    subidx = (cmd_key >> 8) & 255
-                    idx = cmd_key >> 16
-                    var = entity.node.sdo[idx]
-                    if subidx:
-                        var = var[subidx]
-                    asyncio.create_task(var.aset_raw(value))
-                    logger.debug(
-                        "entity: %s cmd_key: %s, value: %s sent successfully",
+                    logger.info(
+                        "entity: %s cmd_key: %08x, value: %s",
                         entity,
                         cmd_key,
                         value,
                     )
-                except ValueError as e:
+
+                    subidx = (cmd_key >> 8) & 255
+                    idx = cmd_key >> 16
+                    var = entity.node.sdo[idx]
+                    logger.info("od[%04x]: %r %r", idx, var, var.od)
+                    if subidx:
+                        var = var[subidx]
+                        logger.info("subidx: %d, var: %r", subidx, var)
+                    asyncio.create_task(var.aset_raw(value))
+                except Exception as e:
                     logger.error("%s", e)
             else:
                 m = NODE_CMD.match(message.topic.value)
