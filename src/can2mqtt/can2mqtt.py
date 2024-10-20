@@ -111,7 +111,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
     except SdoAbortedError as e:
         logger.warning("can't read identity info, skipping")
         return None
-    
+
     node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
 
     if not node.is_supported:
@@ -172,13 +172,19 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
     await entity.publish_config(mqtt_client)
     logger.info("  entity: %r", entity)
 
+    try:
+        has_firmware_update = await node.sdo["Firmware"]["Firmware Max Index"].aget_raw()
+    except SdoAbortedError as e:
+        has_firmware_update = 0
+
     update_entity = EntityRegistry.create(
         -1, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
     )
-    node.update_entity = update_entity
-    update_entity.set_property("name", "Update")
+    update_entity.disable_upload = not has_firmware_update
+
     await update_entity.publish_config(mqtt_client)
     logger.info("  entity: %r", update_entity)
+    node.update_entity = update_entity
 
     node_entity_ids = set()
 
@@ -192,7 +198,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
                 entity_index,
                 mqtt_topic_prefix=mqtt_topic_prefix,
             )
-            node_entity_ids.add(entity.unique_id)           
+            node_entity_ids.add(entity.unique_id)
             logger.info("  entity: %r", entity)
         except KeyError:
             logger.warning(
@@ -240,8 +246,9 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
     node.sw_version = sw_version
 
-    rev, _ = FIRMWARE_MAP[node.id]
-    await node.update_entity.publish_version(mqtt_client, rev)
+    if node.update_entity:
+        rev, _ = FIRMWARE_MAP[node.id]
+        await node.update_entity.publish_version(mqtt_client, rev)
 
     node.is_initialized = True
 
@@ -438,7 +445,7 @@ class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
 
     def publish_version(self, node_id, ver):
         node = self.can_network.get(node_id)
-        if node:
+        if node and node.update_entity:
             asyncio.create_task(node.update_entity.publish_version(self.mqtt_client, ver))
 
     def on_delete_firmware(self, path):

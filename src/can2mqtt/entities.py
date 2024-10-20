@@ -161,6 +161,13 @@ class Entity:
             config_topic, payload=json.dumps(config_payload), retain=False
         )
 
+    async def delete_config(self, mqtt_client):
+        config_topic = self.get_mqtt_config_topic()
+        logger.debug("delete mqtt config_topic: %r", config_topic)
+        await mqtt_client.publish(
+            config_topic, payload=None, retain=False
+        )
+
     async def remove_config(self, mqtt_client):
         config_topic = self.get_mqtt_config_topic()
         await mqtt_client.publish(
@@ -259,7 +266,7 @@ class Update(Entity):
 
         config["device_class"] = "firmware"
         config["name"] = "Update"
-        config["connections"] = [["foo", self.unique_id]]
+        config["icon"] = "mdi:file-download-outline"
         if not self.disable_upload:
             config["command_topic"] = self.get_command_topic()
         config["payload_install"] = "install"
@@ -273,6 +280,9 @@ class Update(Entity):
         })
         logger.info("publish_version: %s", payload)
         await mqtt_client.publish(state_topic, payload=payload, retain=False)
+
+    async def mqtt_initial_publish(self, mqtt_client):
+        await self.publish_version(mqtt_client, None)
 
 
 @EntityRegistry.register
