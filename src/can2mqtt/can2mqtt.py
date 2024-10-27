@@ -375,7 +375,6 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     subidx = (cmd_key >> 8) & 255
                     idx = cmd_key >> 16
                     var = entity.node.sdo[idx]
-                    logger.info("od[%04x]: %r od: %r names: %r subindices: %r", idx, var, var.od, var.od.names, var.od.subindices)
                     if subidx:
                         var = var[subidx]
                         logger.info("subidx: %d, var: %r", subidx, var)
@@ -454,7 +453,6 @@ class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
     def on_delete_firmware(self, path):
         logger.info("remove firmware: %s", path)
         for node_id, (rev, _path) in FIRMWARE_MAP.items():
-            print(node_id, rev, _path)
             if _path == path:
                 return self.publish_version(node_id, None)
 

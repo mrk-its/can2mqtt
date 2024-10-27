@@ -116,8 +116,6 @@ class CommandMixin:
             node.object_dictionary[index].add_member(v)
             cmd_map.append((index << 16) | (sub << 8))
 
-        logger.info("setup object dictionary: od[%04x]: %r, %r", index, node.object_dictionary[index], node.object_dictionary[index].subindices)
-
         self.setup_command_topics(cmd_map)
 
 
