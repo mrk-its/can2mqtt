@@ -379,7 +379,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     if subidx:
                         var = var[subidx]
                         logger.info("subidx: %d, var: %r", subidx, var)
-                    asyncio.create_task(var.aset_raw(value))
+                    await var.aset_raw(value)
                 except Exception as e:
                     logger.error("%s", e)
             else:
