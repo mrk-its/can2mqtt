@@ -254,11 +254,11 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
-    od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
     while True:
         for node_id in can_network.scanner.nodes:
             node = can_network.get(node_id)
             if not node:
+                od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
                 node = can_network.add_node(node_id, od)
                 if sdo_response_timeout is not None:
                     node.sdo.RESPONSE_TIMEOUT = sdo_response_timeout
