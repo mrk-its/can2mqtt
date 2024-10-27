@@ -209,12 +209,12 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
             continue
 
         base_index = 0x2000 + entity_index * 16
-        node.object_dictionary[base_index + 1] = Record(
+        node.object_dictionary.add_object(Record(
             "states", base_index + 1
-        )
-        node.object_dictionary[base_index + 2] = Record(
+        ))
+        node.object_dictionary.add_object(Record(
             "cmds", base_index + 2
-        )
+        ))
 
         entity.setup_object_dictionary(node, base_index)
 
