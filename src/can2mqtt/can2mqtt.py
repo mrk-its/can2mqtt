@@ -377,7 +377,6 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     var = entity.node.sdo[idx]
                     if subidx:
                         var = var[subidx]
-                        logger.info("subidx: %d, var: %r", subidx, var)
                     await var.aset_raw(value)
                 except Exception as e:
                     logger.error("%s", e)
