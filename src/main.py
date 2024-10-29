@@ -33,7 +33,7 @@ def main():
     config = can.util.load_config(config=config_overrides)
 
     coloredlogs.DEFAULT_LOG_FORMAT = (
-        "%(asctime)s %(hostname)s %(name)-18s %(levelname)s %(message)s"
+        "%(asctime)s %(name)-18s %(levelname)s %(message)s"
     )
     coloredlogs.DEFAULT_LEVEL_STYLES.update(
         {"debug": {"color": 8}, "info": {"color": "green"}}
