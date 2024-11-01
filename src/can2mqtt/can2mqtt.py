@@ -69,7 +69,7 @@ async def async_try_iter_items(obj):
 async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
 
     def reload_node(node):
-        logger.info("reloading node %s", node.id)
+        logger.info("reloading node %02x", node.id)
         node.is_initialized = False
         for _, map in node.tpdo.map.items():
             map.clear()
@@ -77,7 +77,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
-            logger.debug("heartbeat from %d: %s", node.id, status)
+            logger.debug("heartbeat from %02x: %s", node.id, status)
             if status == 0:
                 reload_node(node)
             node.last_heartbeat_time = time.time()
@@ -109,14 +109,15 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
         vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
         product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
     except SdoAbortedError as e:
-        logger.warning("can't read identity info, skipping")
-        return None
+        logger.warning("node: %02x can't read identity info, skipping", node.id)
+        return
 
     node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
 
     if not node.is_supported:
         logger.warning(
-            "vendor: %s, product: %s is not supported, skipping",
+            "node %02x: vendor: %s, product: %s is not supported, skipping",
+            node.id,
             vendor_id,
             product_code,
         )
@@ -282,11 +283,12 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
 
             if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
+                    logger.info("registering node: %02x", node.id)
                     await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
                 except SdoCommunicationError as e:
-                    logger.warning("%r", e)
+                    logger.warning("node: %02x: %r", node.id, e)
                 except:
-                    logger.exception("unknown exception")
+                    logger.exception("node: %02x: unknown exception", node.id)
 
             if node.is_supported:
                 is_online = not node.prod_heartbeat_time or (
