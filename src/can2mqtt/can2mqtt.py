@@ -45,6 +45,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE_MAP = defaultdict(lambda: (None, None))
 
 
+WATCHDOG_TIMEOUT_EXIT_CODE = 42
+
+
+class QuitException(Exception):
+    def __init__(self, descr, exit_code=127):
+        super().__init__(descr)
+        self.exit_code = exit_code
+
+
 async def async_try_iter_items(obj):
     try:
         async for key in obj:
@@ -66,6 +75,23 @@ async def async_try_iter_items(obj):
             raise
 
 
+class WatchdogTimer:
+    _time = 0
+
+    def __init__(self, timeout=10):
+        self._timeout = timeout
+        self.reset()
+
+    def reset(self):
+        self._time = time.time()
+
+    def passed(self):
+        return time.time() - self._time >= self._timeout
+
+
+watchdog_timer = WatchdogTimer()
+
+
 async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
 
     def reload_node(node):
@@ -77,6 +103,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
+            watchdog_timer.reset()
             logger.debug("heartbeat from %02x: %s", node.id, status)
             if status == 0:
                 reload_node(node)
@@ -255,6 +282,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
+    watchdog_timer.reset()
     while True:
         for node_id in can_network.scanner.nodes:
             node = can_network.get(node_id)
@@ -305,6 +333,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
 
         await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
         await asyncio.sleep(1.0)
+
+        if watchdog_timer.passed():
+            raise QuitException("watchdog timeout", WATCHDOG_TIMEOUT_EXIT_CODE)
 
 
 async def firmware_upload(can_network: Network, node_id: int, payload):
@@ -474,6 +505,7 @@ async def start(
     sdo_response_timeout=None,
     sdo_max_retries=None,
     firmware_dir=None,
+    interface_opts_json=None,
     **kwargs,
 ):
     if interface == 'mqtt_can':
@@ -493,8 +525,13 @@ async def start(
             can_network = canopen.Network()
             # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
             loop = asyncio.get_running_loop()
+
+            if interface_opts_json:
+                can_kwargs = json.loads(interface_opts_json)
+            else:
+                can_kwargs = {}
             can_network.connect(
-                loop=loop, interface=interface, channel=channel, bitrate=bitrate
+                loop=loop, interface=interface, channel=channel, bitrate=bitrate, **can_kwargs
             )
 
             if firmware_dir:
@@ -512,6 +549,9 @@ async def start(
                     mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix
                 ),
             )
-        except:
+        except QuitException as e:
+            logger.info("quitting: %s, exit_code: %d", e, e.exit_code)
+            return e.exit_code
+        finally:
+            logger.info("publishing offline status")
             await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "offline")
-            raise

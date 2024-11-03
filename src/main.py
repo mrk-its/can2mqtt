@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import logging
+import sys
+
 import coloredlogs
 import can2mqtt
 import can
@@ -19,6 +21,7 @@ def main():
     parser.add_argument("-i", "--interface")
     parser.add_argument("-c", "--channel")
     parser.add_argument("-b", "--bitrate")
+    parser.add_argument("-j", "--interface-opts-json")
     parser.add_argument("-l", "--log-level", default="INFO")
     parser.add_argument("-t", "--mqtt-topic-prefix")
     parser.add_argument("-d", "--sdo-response-timeout", type=float)
@@ -40,4 +43,4 @@ def main():
     )
     coloredlogs.install(level=args.log_level)
 
-    asyncio.run(can2mqtt.start(**config))
+    sys.exit(asyncio.run(can2mqtt.start(**config)))
