@@ -78,7 +78,7 @@ async def async_try_iter_items(obj):
 class WatchdogTimer:
     _time = 0
 
-    def __init__(self, timeout=10):
+    def __init__(self, timeout):
         self._timeout = timeout
         self.reset()
 
@@ -89,7 +89,7 @@ class WatchdogTimer:
         return time.time() - self._time >= self._timeout
 
 
-watchdog_timer = WatchdogTimer()
+watchdog_timer = None
 
 
 async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
@@ -506,8 +506,12 @@ async def start(
     sdo_max_retries=None,
     firmware_dir=None,
     interface_opts_json=None,
+    watchdog_timeout=60,
     **kwargs,
 ):
+    global watchdog_timer
+    watchdog_timer = WatchdogTimer(watchdog_timeout)
+
     if interface == 'mqtt_can':
         if not channel:
             channel = mqtt_server

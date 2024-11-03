@@ -27,6 +27,7 @@ def main():
     parser.add_argument("-d", "--sdo-response-timeout", type=float)
     parser.add_argument("-r", "--sdo-max-retries", type=int)
     parser.add_argument("-f", "--firmware-dir")
+    parser.add_argument("-w", "--watchdog-timeout", type=int)
     args = parser.parse_args()
 
     config_overrides = {
