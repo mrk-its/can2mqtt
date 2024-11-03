@@ -6,6 +6,7 @@ import json
 import os
 import re
 import time
+import zlib
 
 import aiomqtt
 import canopen
@@ -342,8 +343,8 @@ async def firmware_upload(can_network: Network, node_id: int, payload):
     try:
         node: RemoteNode = can_network.get(node_id)
         if node:
-            node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
-            import zlib
+            # TODO:
+            # node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
             logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
             t = time.time()
             firmware = node.sdo["Firmware"]
@@ -423,7 +424,8 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     case (node_id, "update", _):
                         node_id = int(node_id, 16)
                         node = can_network.get(node_id)
-                        node.update_entity.disable_upload = True
+                        # TODO
+                        # node.update_entity.disable_upload = True
                         await node.update_entity.publish_config(mqtt_client)
                         rev, path = FIRMWARE_MAP[node_id]
                         logger.info("firmware update, node_id: %s, rev: %s, path: %s", node_id, rev, path)
