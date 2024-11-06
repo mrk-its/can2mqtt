@@ -7,8 +7,8 @@ authors = [
 requires-python = ">=3.8"
 
 dependencies = [
-    "canopen@git+https://github.com/mrk-its/canopen-asyncio#egg=main",
-    "esp_can@git+https://github.com/mrk-its/esphome-canbus-proxy",
+    "canopen@git+https://github.com/mrk-its/canopen-asyncio#egg=feature-asyncio",
+    "esp_can[esptool]@git+https://github.com/mrk-its/esphome-canbus-proxy",
     "aiomqtt<2",
     "pyserial",
     "coloredlogs",
@@ -18,9 +18,6 @@ dependencies = [
 
 [project.scripts]  # Optional
 can2mqtt = "main:main"
-
-[project.entry-points."can.interface"]
-mqtt_can = "mqtt_can:MqttCan"
 
 [project.optional-dependencies]
 dev = [

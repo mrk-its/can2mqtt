@@ -14,7 +14,7 @@ import pyinotify
 
 logger = logging.getLogger(__name__)
 
-VER_RE = re.compile(rb"node_id: ([\da-f]{2}), ver: (\d{4}\.\d{1,1}\.\d{1,2}(?:-\w+)?.\d{4}\d{2}\d{2}\.\d{2}\d{2}\d{2})")
+VER_RE = re.compile(rb"node_id: ([\da-f]{2}), ver: (\d{4}\.\d{1,2}\.\d{1,2}(?:-\w+)?.\d{4}\d{2}\d{2}\.\d{2}\d{2}\d{2})")
 
 FIRMWARE_DIR = "firmwares"
 

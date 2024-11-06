@@ -6,6 +6,7 @@ import json
 import os
 import re
 import time
+import zlib
 
 import aiomqtt
 import canopen
@@ -45,6 +46,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIRMWARE_MAP = defaultdict(lambda: (None, None))
 
 
+WATCHDOG_TIMEOUT_EXIT_CODE = 42
+
+
+class QuitException(Exception):
+    def __init__(self, descr, exit_code=127):
+        super().__init__(descr)
+        self.exit_code = exit_code
+
+
 async def async_try_iter_items(obj):
     try:
         async for key in obj:
@@ -66,10 +76,27 @@ async def async_try_iter_items(obj):
             raise
 
 
+class WatchdogTimer:
+    _time = 0
+
+    def __init__(self, timeout):
+        self._timeout = timeout
+        self.reset()
+
+    def reset(self):
+        self._time = time.time()
+
+    def passed(self):
+        return time.time() - self._time >= self._timeout
+
+
+watchdog_timer = None
+
+
 async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
 
     def reload_node(node):
-        logger.info("reloading node %s", node.id)
+        logger.info("reloading node %02x", node.id)
         node.is_initialized = False
         for _, map in node.tpdo.map.items():
             map.clear()
@@ -77,7 +104,8 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
     def get_heartbeat_cb(node):
         def on_heartbeat(status):
-            logger.debug("heartbeat from %d: %s", node.id, status)
+            watchdog_timer.reset()
+            logger.debug("heartbeat from %02x: %s", node.id, status)
             if status == 0:
                 reload_node(node)
             node.last_heartbeat_time = time.time()
@@ -109,14 +137,15 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
         vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
         product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
     except SdoAbortedError as e:
-        logger.warning("can't read identity info, skipping")
-        return None
+        logger.warning("node: %02x can't read identity info, skipping", node.id)
+        return
 
     node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
 
     if not node.is_supported:
         logger.warning(
-            "vendor: %s, product: %s is not supported, skipping",
+            "node %02x: vendor: %s, product: %s is not supported, skipping",
+            node.id,
             vendor_id,
             product_code,
         )
@@ -209,12 +238,12 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
             continue
 
         base_index = 0x2000 + entity_index * 16
-        node.object_dictionary[base_index + 1] = Record(
+        node.object_dictionary.add_object(Record(
             "states", base_index + 1
-        )
-        node.object_dictionary[base_index + 2] = Record(
+        ))
+        node.object_dictionary.add_object(Record(
             "cmds", base_index + 2
-        )
+        ))
 
         entity.setup_object_dictionary(node, base_index)
 
@@ -254,11 +283,12 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
-    od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
+    watchdog_timer.reset()
     while True:
         for node_id in can_network.scanner.nodes:
             node = can_network.get(node_id)
             if not node:
+                od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
                 node = can_network.add_node(node_id, od)
                 if sdo_response_timeout is not None:
                     node.sdo.RESPONSE_TIMEOUT = sdo_response_timeout
@@ -282,11 +312,12 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
 
             if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
+                    logger.info("registering node: %02x", node.id)
                     await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
                 except SdoCommunicationError as e:
-                    logger.warning("%r", e)
+                    logger.warning("node: %02x: %r", node.id, e)
                 except:
-                    logger.exception("unknown exception")
+                    logger.exception("node: %02x: unknown exception", node.id)
 
             if node.is_supported:
                 is_online = not node.prod_heartbeat_time or (
@@ -304,13 +335,16 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
         await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
         await asyncio.sleep(1.0)
 
+        if watchdog_timer.passed():
+            raise QuitException("watchdog timeout", WATCHDOG_TIMEOUT_EXIT_CODE)
+
 
 async def firmware_upload(can_network: Network, node_id: int, payload):
     try:
         node: RemoteNode = can_network.get(node_id)
         if node:
-            node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
-            import zlib
+            # TODO:
+            # node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
             logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
             t = time.time()
             firmware = node.sdo["Firmware"]
@@ -365,19 +399,20 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     cmd_key, value = entity.get_can_cmd(
                         message.topic.value, message.payload
                     )
+                    logger.info(
+                        "entity: %s cmd_key: %08x, value: %s",
+                        entity,
+                        cmd_key,
+                        value,
+                    )
+
                     subidx = (cmd_key >> 8) & 255
                     idx = cmd_key >> 16
                     var = entity.node.sdo[idx]
                     if subidx:
                         var = var[subidx]
-                    asyncio.create_task(var.aset_raw(value))
-                    logger.debug(
-                        "entity: %s cmd_key: %s, value: %s sent successfully",
-                        entity,
-                        cmd_key,
-                        value,
-                    )
-                except ValueError as e:
+                    await var.aset_raw(value)
+                except Exception as e:
                     logger.error("%s", e)
             else:
                 m = NODE_CMD.match(message.topic.value)
@@ -389,7 +424,8 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     case (node_id, "update", _):
                         node_id = int(node_id, 16)
                         node = can_network.get(node_id)
-                        node.update_entity.disable_upload = True
+                        # TODO
+                        # node.update_entity.disable_upload = True
                         await node.update_entity.publish_config(mqtt_client)
                         rev, path = FIRMWARE_MAP[node_id]
                         logger.info("firmware update, node_id: %s, rev: %s, path: %s", node_id, rev, path)
@@ -451,7 +487,6 @@ class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
     def on_delete_firmware(self, path):
         logger.info("remove firmware: %s", path)
         for node_id, (rev, _path) in FIRMWARE_MAP.items():
-            print(node_id, rev, _path)
             if _path == path:
                 return self.publish_version(node_id, None)
 
@@ -472,13 +507,12 @@ async def start(
     sdo_response_timeout=None,
     sdo_max_retries=None,
     firmware_dir=None,
+    interface_opts_json=None,
+    watchdog_timeout=60,
     **kwargs,
 ):
-    if interface == 'mqtt_can':
-        if not channel:
-            channel = mqtt_server
-        if sdo_response_timeout is None:
-            sdo_response_timeout = 2.0
+    global watchdog_timer
+    watchdog_timer = WatchdogTimer(watchdog_timeout)
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
@@ -491,8 +525,13 @@ async def start(
             can_network = canopen.Network()
             # can_network.listeners.append(lambda msg: logger.debug("%s", msg))
             loop = asyncio.get_running_loop()
+
+            if interface_opts_json:
+                can_kwargs = json.loads(interface_opts_json)
+            else:
+                can_kwargs = {}
             can_network.connect(
-                loop=loop, interface=interface, channel=channel, bitrate=bitrate
+                loop=loop, interface=interface, channel=channel, bitrate=bitrate, **can_kwargs
             )
 
             if firmware_dir:
@@ -510,6 +549,9 @@ async def start(
                     mqtt_client, can_network, mqtt_topic_prefix=mqtt_topic_prefix
                 ),
             )
-        except:
+        except QuitException as e:
+            logger.info("quitting: %s, exit_code: %d", e, e.exit_code)
+            return e.exit_code
+        finally:
+            logger.info("publishing offline status")
             await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "offline")
-            raise

@@ -16,7 +16,7 @@ done >> $EDSFILE
 
 (cat $DIR/entity_header.eds.tpl; echo) >> $EDSFILE
 
-for entity_id in `seq 1 32`; do
+for entity_id in `seq 1 64`; do
   ENTITY_ID=$(printf '%02x' $entity_id) envsubst < $DIR/entity.eds.tpl;
   echo
 done >> $EDSFILE

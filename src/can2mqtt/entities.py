@@ -222,6 +222,8 @@ class Entity:
         pass
 
     def set_metadata_property(self, key, value):
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
         name = self.METADATA_PROPERTIES.get(key)
         if name:
             logger.debug("\t%s %s: %s", name, key, value)

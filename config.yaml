@@ -1,6 +1,6 @@
 name: "can2mqtt"
 description: "can2mqtt gateway"
-version: "0.1.9.1"
+version: "0.1.9.2-b14"
 slug: "can2mqtt"
 init: false
 
@@ -17,8 +17,8 @@ image: mrkits/image-{arch}-can2mqtt
 arch:
   - aarch64
   - amd64
-  - armhf
-  - armv7
+    #- armhf
+    #- armv7
   - i386
 
 map:
@@ -40,3 +40,4 @@ schema:
   mqtt_topic_prefix: str?
   sdo_response_timeout: float?
   firmware_dir: str?
+  extra_args: str?
