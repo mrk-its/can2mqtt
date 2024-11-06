@@ -25,7 +25,7 @@ AccessType=R
 [2${ENTITY_ID}0sub3]
 ParameterName=Entity${ENTITY_ID}_UnitOfMeasurement
 ObjectType=7
-DataType=9
+DataType=10
 AccessType=R
 
 [2${ENTITY_ID}0sub4]
