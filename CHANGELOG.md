@@ -1,4 +1,23 @@
-<a id="v0.1.9.1"></a>
+# v0.2.1-b1 - 2024-11-25
+- rename esphome-canbus-proxy to esphome-canbus-usb-serial
+
+# v0.2.0 - 2024-11-04
+- up to 64 entities in esphome.eds
+- set sdo variables synchronously
+- use object_directory.add_object
+- cleanup logging
+- fix firmware version regex
+- BUGFIX: do not share OD between nodes!
+- add CAN heartbeat watchdog
+- pass extra args to can2mqtt
+- install esp_can with esptool
+- set watchdog-timeout to 60 seconds
+- fix interface_opts_json handling
+- OTA: don't set node to pre-operational
+- tmp: don't disable upload button while uploading
+- get rid of mqtt_can
+- declare metadata properties as OCTET_STRINGS, fixes #20
+
 # [v0.1.9.1](https://github.com/mrk-its/can2mqtt/releases/tag/v0.1.9.1) - 2024-10-20
 
 - update entity: do not show install when can ota is not enabled
