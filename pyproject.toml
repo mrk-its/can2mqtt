@@ -8,7 +8,7 @@ requires-python = ">=3.8"
 
 dependencies = [
     "canopen@git+https://github.com/mrk-its/canopen-asyncio#egg=feature-asyncio",
-    "esp_can[esptool]@git+https://github.com/mrk-its/esphome-canbus-proxy",
+    "esp_usb_serial[esptool]@git+https://github.com/mrk-its/esphome-canbus-usb-serial",
     "aiomqtt<2",
     "pyserial",
     "coloredlogs",
