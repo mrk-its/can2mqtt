@@ -183,7 +183,6 @@ class Entity:
     def get_mqtt_config(self):
         cfg = {
             "object_id": self.unique_id,
-            "entity_id": self.unique_id,
             "unique_id": self.unique_id,
             "availability": [
                 {
