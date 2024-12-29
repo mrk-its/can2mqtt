@@ -1,12 +1,3 @@
-[2000]
-ParameterName=EntityTypes
-CompactSubObj=99
-ObjectType=8
-DataType=5
-AccessType=R
-DefaultValue=
-
-
 [3000]
 ParameterName=Firmware
 ObjectType=9

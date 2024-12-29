@@ -3,8 +3,14 @@ from collections import defaultdict
 import logging
 import json
 import math
-from canopen.objectdictionary import Variable
+from canopen.objectdictionary import ODVariable, ODRecord
+from canopen.node import RemoteNode
 
+
+class OctetString(ODVariable):
+    def __init__(self, name, index, subindex):
+        super().__init__(name, index, subindex)
+        self.data_type = datatypes.OCTET_STRING
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +22,45 @@ def bool2onoff(value):
 def onoff2bool(value):
     return value == b"ON"
 
+
+def scale_to_wire(value: float|str, min_val: float, max_val: float, max_int: int) -> int:
+    value = float(value)
+    if math.isnan(value):
+        return max_int
+    result = round((max_int - 1) * (value - min_val) / (max_val - min_val))
+    return max(0, min(max_int - 1, int(result)))
+
+
+def scale_from_wire(value: int, min_val: float, max_val: float, max_int: int) -> float:
+    if value == max_int:
+        return math.nan
+    return value * (max_val - min_val) / (max_int - 1) + min_val
+
+
+def percentage_to_wire(value: float|str):
+    return scale_to_wire(value, 0.0, 100.0, 255)
+
+
+def percentage_from_wire(value: int):
+    return scale_from_wire(value, 0.0, 100.0, 255)
+
+
+def color_temp_to_wire(value: float|str) -> int:
+  value = float(value)
+  return scale_to_wire(value, 100.0, 1000.0, 255)
+
+
+def color_temp_from_wire(value: int) -> float:
+  # round to int, floats are not expected on mqtt state topic
+  return int(scale_from_wire(value, 100.0, 1000.0, 255))
+
+
+def brightness_to_wire(brightness: float|str):
+    return scale_to_wire(brightness, 0, 254, 255)
+
+
+def brightness_from_wire(value):
+    return scale_from_wire(value, 0, 254, 255)
 
 class StateMixin:
     _node_state_key_2_entity = defaultdict(dict)
@@ -55,7 +100,7 @@ class StateMixin:
         state_map = []
         index = base_index + 1
         for sub, (_, _, _type) in enumerate(self.STATES, 1):
-            v = Variable("state", index, sub)
+            v = ODVariable("state", index, sub)
             v.data_type = _type
             node.object_dictionary[index].add_member(v)
             state_map.append((index << 16) | (sub << 8))
@@ -111,7 +156,7 @@ class CommandMixin:
         cmd_map = []
         index = base_index + 2
         for sub, (_, _, _type) in enumerate(self.COMMANDS, 1):
-            v = Variable("cmd", index, sub)
+            v = ODVariable("cmd", index, sub)
             v.data_type = _type
             node.object_dictionary[index].add_member(v)
             cmd_map.append((index << 16) | (sub << 8))
@@ -182,7 +227,7 @@ class Entity:
 
     def get_mqtt_config(self):
         cfg = {
-            "object_id": self.unique_id,
+            # "object_id": self.unique_id,
             "unique_id": self.unique_id,
             "availability": [
                 {
@@ -217,8 +262,11 @@ class Entity:
         args_str = ", ".join(args)
         return f"{self.__class__.__name__}({args_str})"
 
-    def setup_object_dictionary(self, node, base_index):
-        pass
+    def setup_object_dictionary(self, node: RemoteNode, base_index):
+        node.object_dictionary.add_object(ODRecord(f"node {node.id:02x} metadata", base_index))
+        node.object_dictionary[base_index].add_member(OctetString("name", base_index, 1))
+        node.object_dictionary[base_index].add_member(OctetString("device_class", base_index, 2))
+
 
     def set_metadata_property(self, key, value):
         if isinstance(value, bytes):
@@ -315,6 +363,11 @@ class Sensor(StateMixin, Entity):
         ("state_topic", float_to_str, datatypes.REAL32),
     ]
 
+    def setup_object_dictionary(self, node: RemoteNode, base_index):
+        super().setup_object_dictionary(node, base_index)
+        node.object_dictionary[base_index].add_member(OctetString("unit_of_measurement", base_index, 3))
+        node.object_dictionary[base_index].add_member(OctetString("state_class", base_index, 4))
+
 
 class MinMaxValueMixin:
     METADATA_PROPERTIES = {
@@ -325,10 +378,10 @@ class MinMaxValueMixin:
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
-        v = Variable("meta_min_value", base_index, 7)
+        v = ODVariable("meta_min_value", base_index, 7)
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
-        v = Variable("meta_min_value", base_index, 8)
+        v = ODVariable("meta_min_value", base_index, 8)
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
 
@@ -338,7 +391,7 @@ class MinMaxValueMixin:
         else:
             min_val = self.props.get("min_value", 0)
             max_val = self.props.get("max_value", self.N_LEVELS - 1)
-            value2 = value * (max_val - min_val + 1) / self.N_LEVELS + min_val
+            value2 = scale_from_wire(value, min_val, max_val, self.N_LEVELS)
         return super().get_mqtt_state(state_key, value2)
 
     # TODO: add scaling for commands in get_can_cmd
@@ -393,19 +446,38 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
+    METADATA_PROPERTIES = {
+        7: "min_mireds",
+        8: "max_mireds",
+        **COMMON_METADATA_PROPERTIES,
+    }
+
     STATES = [
         ("state_topic", bool2onoff, datatypes.UNSIGNED8),
-        ("brightness_state_topic", str, datatypes.UNSIGNED8),
-        ("color_temp_state_topic", str, datatypes.UNSIGNED16),
+        ("brightness_state_topic", brightness_from_wire, datatypes.UNSIGNED8),
+        ("color_temp_state_topic", color_temp_from_wire, datatypes.UNSIGNED8),
     ]
 
     COMMANDS = [
         ("command_topic", onoff2bool, datatypes.UNSIGNED8),
-        ("brightness_command_topic", int, datatypes.UNSIGNED8),
-        ("color_temp_command_topic", int, datatypes.UNSIGNED16),
+        ("brightness_command_topic", brightness_to_wire, datatypes.UNSIGNED8),
+        ("color_temp_command_topic", color_temp_to_wire, datatypes.UNSIGNED8),
     ]
 
-    STATIC_PROPS = {"assumed_state": False}
+    STATIC_PROPS = {
+        "assumed_state": False,
+        "supported_color_modes": ["color_temp"]
+    }
+
+    def setup_object_dictionary(self, node, base_index):
+        super().setup_object_dictionary(node, base_index)
+        # let's reuse 7 and 8 indices for min/max mireds
+        v = ODVariable("min_mireds", base_index, 7)
+        v.data_type = datatypes.REAL32
+        node.object_dictionary[base_index].add_member(v)
+        v = ODVariable("max_mireds", base_index, 8)
+        v.data_type = datatypes.REAL32
+        node.object_dictionary[base_index].add_member(v)
 
 
 @EntityRegistry.register
@@ -433,12 +505,12 @@ class Cover(StateMixin, CommandMixin, Entity):
 
     STATES = [
         ("state_topic", STATES.get, datatypes.UNSIGNED8),
-        ("position_topic", lambda pos: pos * 100 // 255, datatypes.UNSIGNED8),
+        ("position_topic", percentage_from_wire, datatypes.UNSIGNED8),
     ]
 
     COMMANDS = [
         ("command_topic", CMDS.get, datatypes.UNSIGNED8),
-        ("set_position_topic", lambda pos: int(pos) * 255 // 100, datatypes.UNSIGNED8),
+        ("set_position_topic", percentage_to_wire, datatypes.UNSIGNED8),
     ]
 
 

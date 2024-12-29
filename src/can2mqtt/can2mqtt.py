@@ -13,15 +13,14 @@ import canopen
 
 from canopen.network import Network
 from canopen.node import RemoteNode
-from canopen.nmt import NMT_COMMANDS
 
 from canopen.sdo.exceptions import SdoAbortedError, SdoCommunicationError
 from canopen.objectdictionary import (
-    ObjectDictionary,
     import_od,
     datatypes,
-    Record,
-    Variable,
+    ODRecord,
+    ODArray,
+    ODVariable,
 )
 
 from .utils import parse_mqtt_server_url
@@ -93,29 +92,29 @@ class WatchdogTimer:
 watchdog_timer = None
 
 
-async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, node: RemoteNode):
+def reload_node(node):
+    logger.info("reloading node %02x", node.id)
+    node.is_initialized = False
+    for _, map in node.tpdo.map.items():
+        map.clear()
+        map.callbacks.clear()  # probably above clear should do that??
 
-    def reload_node(node):
-        logger.info("reloading node %02x", node.id)
-        node.is_initialized = False
-        for _, map in node.tpdo.map.items():
-            map.clear()
-            map.callbacks.clear()  # probably above clear should do that??
+def get_heartbeat_cb(mqtt_client, node):
+    def on_heartbeat(status):
+        watchdog_timer.reset()
+        logger.debug("heartbeat from %02x: %s", node.id, status)
+        if status == 0:
+            reload_node(node)
+        node.last_heartbeat_time = time.time()
+        if node.ntm_state_entity:
+            state_topic = node.ntm_state_entity.get_state_topic()
+            asyncio.create_task(
+                mqtt_client.publish(state_topic, payload=str(status), retain=False)
+            )
+    return on_heartbeat
 
-    def get_heartbeat_cb(node):
-        def on_heartbeat(status):
-            watchdog_timer.reset()
-            logger.debug("heartbeat from %02x: %s", node.id, status)
-            if status == 0:
-                reload_node(node)
-            node.last_heartbeat_time = time.time()
-            if node.ntm_state_entity:
-                state_topic = node.ntm_state_entity.get_state_topic()
-                asyncio.create_task(
-                    mqtt_client.publish(state_topic, payload=str(status), retain=False)
-                )
-        return on_heartbeat
 
+def get_tptd_cb(mqtt_client):
     async def on_tptd(map):
         node_id = map.pdo_node.node.id
         for v in map.map:
@@ -132,39 +131,17 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
                     logger.error("%s", e)
             else:
                 logger.warning("no entity for node: %d, key: %08x", node_id, key)
+    return on_tptd
+
+
+async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode):
 
     try:
-        vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
-        product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
+        node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
     except SdoAbortedError as e:
-        logger.warning("node: %02x can't read identity info, skipping", node.id)
-        return
+        node.sw_version = None
 
-    node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
-
-    if not node.is_supported:
-        logger.warning(
-            "node %02x: vendor: %s, product: %s is not supported, skipping",
-            node.id,
-            vendor_id,
-            product_code,
-        )
-        node.is_initialized = True
-        return
-
-    try:
-        sw_version = await node.sdo["SoftwareVersion"].aget_raw()
-    except SdoAbortedError as e:
-        sw_version = None
-
-    # if node.sw_version:
-    #     if node.sw_version == sw_version:
-    #         # node was initialized before and sw_version didn't change
-    #         node.is_initialized = True
-    #         logger.info("node %s: sw_version didn't change, skipping initialization", node.id)
-    #         return
-    #     else:
-    #         logger.info("node %s: new version, reinitializing", node.id)
+    # TODO - implement node caching using (node.id, sw_version) as a key
 
     node.device_name = await node.sdo["DeviceName"].aget_raw()
 
@@ -178,7 +155,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
             "ProducerHeartbeatTime"
         ].aget_raw()
         if not node.has_nmt_callback:
-            node.nmt.add_hearbeat_callback(get_heartbeat_cb(node))
+            node.nmt.add_hearbeat_callback(get_heartbeat_cb(mqtt_client, node))
             node.has_nmt_callback = True
     except SdoAbortedError as e:
         pass
@@ -215,6 +192,15 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
     logger.info("  entity: %r", update_entity)
     node.update_entity = update_entity
 
+    entity_types = ODArray("EntityTypes", 0x2000)
+    entity_types_len = ODVariable("EntityTypes_len", 0x2000, 0)
+    entity_types_len.data_type = datatypes.UNSIGNED8
+    entity_types.add_member(entity_types_len)
+    item = ODVariable("EntityTypes_item1", 0x2000, 1)
+    item.data_type = datatypes.UNSIGNED8
+    entity_types.add_member(item)
+    node.object_dictionary.add_object(entity_types)
+
     node_entity_ids = set()
 
     async for entity_index, entity_type in async_try_iter_items(
@@ -238,10 +224,10 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
             continue
 
         base_index = 0x2000 + entity_index * 16
-        node.object_dictionary.add_object(Record(
+        node.object_dictionary.add_object(ODRecord(
             "states", base_index + 1
         ))
-        node.object_dictionary.add_object(Record(
+        node.object_dictionary.add_object(ODRecord(
             "cmds", base_index + 2
         ))
 
@@ -270,20 +256,49 @@ async def register_node(mqtt_client, mqtt_topic_prefix, can_network: Network, no
     logger.debug("reading tpdo config")
     await node.tpdo.aread()
 
+    on_tptd = get_tptd_cb(mqtt_client)
     for _, map in node.tpdo.map.items():
         map.add_callback(on_tptd)
-
-    node.sw_version = sw_version
 
     if node.update_entity:
         rev, _ = FIRMWARE_MAP[node.id]
         await node.update_entity.publish_version(mqtt_client, rev)
+
+
+
+async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Network, node: RemoteNode):
+
+    try:
+        vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
+        product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
+        revision = await node.sdo["Identity"]["RevisionNumber"].aget_raw()
+    except SdoAbortedError as e:
+        logger.warning("node: %02x can't read identity info, skipping", node.id)
+        return
+
+    node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
+
+    if not node.is_supported:
+        logger.warning(
+            "node %02x: vendor: %s, product: %s is not supported, skipping",
+            node.id,
+            vendor_id,
+            product_code,
+        )
+        node.is_initialized = True
+        return
+
+    logger.info("RevisionNumber: %08x", revision)
+
+    await process_node(mqtt_client, mqtt_topic_prefix, node)
 
     node.is_initialized = True
 
 
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
     watchdog_timer.reset()
+    await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
+
     while True:
         for node_id in can_network.scanner.nodes:
             node = can_network.get(node_id)
@@ -328,11 +343,10 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                 if node.availability != availability:
                     logger.info("node %s is %s", node_id, availability)
                     node.availability = availability
-                await mqtt_client.publish(
-                    node.availability_topic, payload=node.availability
-                )
+                    await mqtt_client.publish(
+                        node.availability_topic, payload=node.availability
+                    )
 
-        await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
         await asyncio.sleep(1.0)
 
         if watchdog_timer.passed():
@@ -388,9 +402,15 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     for entity in Entity.entities():
                         await entity.publish_config(mqtt_client)
                     await asyncio.sleep(1.0)
+                    await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
                     for entity in Entity.entities():
                         await entity.mqtt_initial_publish(mqtt_client)
-
+                    for node_id in can_network.scanner.nodes:
+                            node = can_network.get(node_id)
+                            if node and node.is_supported:
+                                await mqtt_client.publish(
+                                    node.availability_topic, payload="online"
+                                )
                 continue
 
             entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)
@@ -554,4 +574,10 @@ async def start(
             return e.exit_code
         finally:
             logger.info("publishing offline status")
+            for node_id in can_network.scanner.nodes:
+                node = can_network.get(node_id)
+                if node and node.is_supported:
+                    await mqtt_client.publish(
+                        node.availability_topic, payload="offline"
+                    )
             await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "offline")
