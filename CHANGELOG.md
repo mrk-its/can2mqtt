@@ -1,5 +1,6 @@
 # v0.2.2 - 2024-12-29
 - cleanup EDS files
+- human-readable entity ids
 - lights: better color temp handling
 - covers: use scaling utils
 
