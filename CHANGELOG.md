@@ -1,3 +1,8 @@
+# v0.2.2 - 2024-12-29
+- cleanup EDS files
+- lights: better color temp handling
+- covers: use scaling utils
+
 # v0.2.1-b1 - 2024-11-25
 - rename esphome-canbus-proxy to esphome-canbus-usb-serial
 
