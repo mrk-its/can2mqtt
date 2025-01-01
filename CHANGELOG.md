@@ -1,3 +1,8 @@
+# v0.2.3-b1 - 2025-01-01
+- suport for esphome-canopen rev1:
+  * LightV1 with optional brightness / color temp support
+  * CoverV1 with optional position / tilt
+
 # v0.2.2 - 2024-12-29
 - cleanup EDS files
 - human-readable entity ids
