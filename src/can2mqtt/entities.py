@@ -66,9 +66,12 @@ def brightness_from_wire(value):
 class StateMixin:
     _node_state_key_2_entity = defaultdict(dict)
 
-    STATES = [
-        ("state_topic", str, datatypes.UNSIGNED8),
-    ]
+    def states(self):
+        yield "state_topic", str, datatypes.UNSIGNED8
+
+    @cached_property
+    def STATES(self):
+        return list(self.states())
 
     state_map = None
 
@@ -117,9 +120,13 @@ class StateMixin:
 class CommandMixin:
     _mqtt_cmd_topic2entity = dict()
 
-    COMMANDS = [
-        ("command_topic", int, datatypes.UNSIGNED8),
-    ]
+    def commands(self):
+        yield "command_topic", int, datatypes.UNSIGNED8
+
+    @cached_property
+    def COMMANDS(self):
+        return list(self.commands())
+
     command_map = None
     _topic2cmdkey = None
 
@@ -174,9 +181,9 @@ class Entity:
 
     @cached_property
     def METADATA_PROPERTIES(self):
-        return dict(self.get_metadata_properties())
+        return dict(self.canopen_metadata_properties())
 
-    def get_metadata_properties(self):
+    def canopen_metadata_properties(self):
         yield 1, "name"
         yield 2, "device_class"
 
@@ -366,12 +373,12 @@ def float_to_str(value):
 class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.REAL32),
-    ]
 
-    def get_metadata_properties(self):
-        yield from super().get_metadata_properties()
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.REAL32
+
+    def canopen_metadata_properties(self):
+        yield from super().canopen_metadata_properties()
         yield 3, "unit_of_measurement"
         yield 4, "state_class"
 
@@ -384,8 +391,8 @@ class Sensor(StateMixin, Entity):
 
 class MinMaxValueMixin:
 
-    def get_metadata_properties(self):
-        yield from super().get_metadata_properties()
+    def canopen_metadata_properties(self):
+        yield from super().canopen_metadata_properties()
         yield 7, "min_value"
         yield 8, "max_value"
 
@@ -415,20 +422,20 @@ class MinMaxValueMixin:
 class Sensor8(MinMaxValueMixin, Sensor):
     TYPE_ID = 6
     TYPE_NAME = "sensor"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.UNSIGNED8),
-    ]
     N_LEVELS = 255
+
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
 class Sensor16(MinMaxValueMixin, Sensor):
     TYPE_ID = 7
     TYPE_NAME = "sensor"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.UNSIGNED16),
-    ]
     N_LEVELS = 65535
+
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.UNSIGNED16
 
 
 @EntityRegistry.register
@@ -436,23 +443,21 @@ class BinarySensor(StateMixin, Entity):
     TYPE_ID = 2
     TYPE_NAME = "binary_sensor"
 
-    STATES = [
-        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
-    ]
+    def states(self):
+        yield "state_topic", bool2onoff, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
 class Switch(StateMixin, CommandMixin, Entity):
     TYPE_ID = 3
     TYPE_NAME = "switch"
-
-    STATES = [
-        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
-    ]
-    COMMANDS = [
-        ("command_topic", onoff2bool, datatypes.UNSIGNED8),
-    ]
     PROPS = {"assumed_state": False}
+
+    def states(self):
+        yield "state_topic", bool2onoff, datatypes.UNSIGNED8
+
+    def commands(self):
+        yield "command_topic", onoff2bool, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
@@ -460,25 +465,23 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
-    STATES = [
-        ("state_topic", bool2onoff, datatypes.UNSIGNED8),
-        ("brightness_state_topic", brightness_from_wire, datatypes.UNSIGNED8),
-        ("color_temp_state_topic", color_temp_from_wire, datatypes.UNSIGNED8),
-    ]
-
-    COMMANDS = [
-        ("command_topic", onoff2bool, datatypes.UNSIGNED8),
-        ("brightness_command_topic", brightness_to_wire, datatypes.UNSIGNED8),
-        ("color_temp_command_topic", color_temp_to_wire, datatypes.UNSIGNED8),
-    ]
-
     PROPS = {
         "assumed_state": False,
         "supported_color_modes": ["color_temp"]
     }
 
-    def get_metadata_properties(self):
-        yield from super().get_metadata_properties()
+    def states(self):
+        yield "state_topic", bool2onoff, datatypes.UNSIGNED8
+        yield "brightness_state_topic", brightness_from_wire, datatypes.UNSIGNED8
+        yield "color_temp_state_topic", color_temp_from_wire, datatypes.UNSIGNED8
+
+    def commands(self):
+        yield "command_topic", onoff2bool, datatypes.UNSIGNED8
+        yield "brightness_command_topic", brightness_to_wire, datatypes.UNSIGNED8
+        yield "color_temp_command_topic", color_temp_to_wire, datatypes.UNSIGNED8
+
+    def canopen_metadata_properties(self):
+        yield from super().canopen_metadata_properties()
         yield 7, "min_mireds"
         yield 8, "max_mireds"
 
@@ -499,22 +502,22 @@ class LightV1(StateMixin, CommandMixin, Entity):
     VERSION = 1
     TYPE_NAME = "light"
 
-    def get_states(self):
+    def states(self):
         yield ("state_topic", bool2onoff, datatypes.UNSIGNED8)
         if self.supports_brightness():
             yield ("brightness_state_topic", brightness_from_wire, datatypes.UNSIGNED8)
         if self.supports_color_temp():
             yield ("color_temp_state_topic", color_temp_from_wire, datatypes.UNSIGNED8)
 
-    def get_commands(self):
+    def commands(self):
         yield ("command_topic", onoff2bool, datatypes.UNSIGNED8)
         if self.supports_brightness():
             yield ("brightness_command_topic", brightness_to_wire, datatypes.UNSIGNED8)
         if self.supports_color_temp():
             yield ("color_temp_command_topic", color_temp_to_wire, datatypes.UNSIGNED8)
 
-    def get_metadata_properties(self):
-        yield from super().get_metadata_properties()
+    def canopen_metadata_properties(self):
+        yield from super().canopen_metadata_properties()
         if self.supports_color_temp():
             yield 7, "min_mireds"
             yield 8, "max_mireds"
@@ -534,14 +537,6 @@ class LightV1(StateMixin, CommandMixin, Entity):
 
         yield "supported_color_modes", supported_color_modes
 
-
-    @cached_property
-    def STATES(self):
-        return list(self.get_states())
-
-    @cached_property
-    def COMMANDS(self):
-        return list(self.get_commands())
 
     @cached_property
     def PROPS(self):
@@ -588,15 +583,13 @@ class Cover(StateMixin, CommandMixin, Entity):
         b"CLOSE": 2,
     }
 
-    STATES = [
-        ("state_topic", STATES_DICT.get, datatypes.UNSIGNED8),
-        ("position_topic", percentage_from_wire, datatypes.UNSIGNED8),
-    ]
+    def states(self):
+        yield "state_topic", self.STATES_DICT.get, datatypes.UNSIGNED8
+        yield "position_topic", percentage_from_wire, datatypes.UNSIGNED8
 
-    COMMANDS = [
-        ("command_topic", CMDS.get, datatypes.UNSIGNED8),
-        ("set_position_topic", percentage_to_wire, datatypes.UNSIGNED8),
-    ]
+    def commands(self):
+        yield "command_topic", self.CMDS.get, datatypes.UNSIGNED8
+        yield "set_position_topic", percentage_to_wire, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
@@ -628,64 +621,56 @@ class CoverV1(StateMixin, CommandMixin, Entity):
         b"CLOSE": 2,
     }
 
-    def get_states(self):
+    def states(self):
         yield ("state_topic", self.STATES_DICT.get, datatypes.UNSIGNED8)
         if self.caps & 1:
             yield ("position_topic", percentage_from_wire, datatypes.UNSIGNED8)
         if self.caps & 2:
             yield ("tilt_status_topic", percentage_from_wire, datatypes.UNSIGNED8)
 
-    @cached_property
-    def STATES(self):
-        return list(self.get_states())
-
-    def get_commands(self):
+    def commands(self):
         yield ("command_topic", self.CMDS.get, datatypes.UNSIGNED8)
         if self.caps & 1:
             yield ("set_position_topic", percentage_to_wire, datatypes.UNSIGNED8)
         if self.caps & 2:
             yield ("tilt_command_topic", percentage_to_wire, datatypes.UNSIGNED8)
 
-    @cached_property
-    def COMMANDS(self):
-        return list(self.get_commands())
-
 
 @EntityRegistry.register
 class Number(StateMixin, CommandMixin, Entity):
     TYPE_ID = 8
     TYPE_NAME = "number"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.REAL32),
-    ]
-    COMMANDS = [
-        ("command_topic", float, datatypes.REAL32)
-    ]
+
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.REAL32
+
+    def commands(self):
+        yield "command_topic", float, datatypes.REAL32
 
 @EntityRegistry.register
 class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 9
     TYPE_NAME = "number"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.UNSIGNED8),
-    ]
-    COMMANDS = [
-        ("command_topic", int, datatypes.UNSIGNED8),
-    ]
     N_LEVELS = 255
+
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.UNSIGNED8
+
+    def commands(self):
+        yield "command_topic", int, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
 class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 10
     TYPE_NAME = "number"
-    STATES = [
-        ("state_topic", float_to_str, datatypes.UNSIGNED16),
-    ]
-    COMMANDS = [
-        ("command_topic", int, datatypes.UNSIGNED16),
-    ]
     N_LEVELS = 65535
+
+    def states(self):
+        yield "state_topic", float_to_str, datatypes.UNSIGNED16
+
+    def commands(self):
+        yield "command_topic", int, datatypes.UNSIGNED16
 
 
 ALARM_COMMANDS = {
@@ -717,12 +702,12 @@ class Alarm(StateMixin, CommandMixin, Entity):
     TYPE_ID = 16
     TYPE_NAME = "alarm_control_panel"
 
-    STATES = [
-        ("state_topic", ALARM_STATES.get, datatypes.UNSIGNED8),
-    ]
-    COMMANDS = [
-        ("command_topic", ALARM_COMMANDS.get, datatypes.UNSIGNED8),
-    ]
+    def states(self):
+        yield "state_topic", ALARM_STATES.get, datatypes.UNSIGNED8
+
+    def commands(self):
+        yield "command_topic", ALARM_COMMANDS.get, datatypes.UNSIGNED8
+
     PROPS = {
         "assumed_state": False,
         "code_arm_required": False,
