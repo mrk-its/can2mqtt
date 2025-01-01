@@ -134,7 +134,7 @@ def get_tptd_cb(mqtt_client):
     return on_tptd
 
 
-async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode):
+async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, revision: int):
 
     try:
         node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
@@ -184,7 +184,7 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode):
         has_firmware_update = 0
 
     update_entity = EntityRegistry.create(
-        -1, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
+        255, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
     )
     update_entity.disable_upload = not has_firmware_update
 
@@ -192,12 +192,24 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode):
     logger.info("  entity: %r", update_entity)
     node.update_entity = update_entity
 
-    entity_types = ODArray("EntityTypes", 0x2000)
-    entity_types_len = ODVariable("EntityTypes_len", 0x2000, 0)
+    if revision == 0:
+        entity_types_index = 0x2000
+        data_type = datatypes.UNSIGNED8
+    elif revision == 1:
+        entity_types_index = 0x2001
+        data_type = datatypes.UNSIGNED32
+    else:
+        logger.warning("node revision: %d is not supported")
+        return
+
+    entity_types_index = 0x2000 if revision == 0 else 0x2001
+
+    entity_types = ODArray("EntityTypes", entity_types_index)
+    entity_types_len = ODVariable("EntityTypes_len", entity_types_index, 0)
     entity_types_len.data_type = datatypes.UNSIGNED8
     entity_types.add_member(entity_types_len)
-    item = ODVariable("EntityTypes_item1", 0x2000, 1)
-    item.data_type = datatypes.UNSIGNED8
+    item = ODVariable("EntityTypes_item1", entity_types_index, 1)
+    item.data_type = data_type
     entity_types.add_member(item)
     node.object_dictionary.add_object(entity_types)
 
@@ -290,7 +302,7 @@ async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Networ
 
     logger.info("RevisionNumber: %08x", revision)
 
-    await process_node(mqtt_client, mqtt_topic_prefix, node)
+    await process_node(mqtt_client, mqtt_topic_prefix, node, revision)
 
     node.is_initialized = True
 
