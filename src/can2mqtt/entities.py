@@ -165,14 +165,6 @@ class CommandMixin:
         self.setup_command_topics(cmd_map)
 
 
-COMMON_METADATA_PROPERTIES = {
-    1: "name",
-    2: "device_class",
-    3: "unit_of_measurement",
-    4: "state_class",
-}
-
-
 class Entity:
     _entities = {}
     NAME_PROP = 1
@@ -180,7 +172,13 @@ class Entity:
     VERSION = 0
     PROPS = {}
 
-    METADATA_PROPERTIES = COMMON_METADATA_PROPERTIES
+    @cached_property
+    def METADATA_PROPERTIES(self):
+        return dict(self.get_metadata_properties())
+
+    def get_metadata_properties(self):
+        yield 1, "name"
+        yield 2, "device_class"
 
     def __init__(self, node, entity_index, mqtt_topic_prefix, caps):
         self.node = node
@@ -290,6 +288,7 @@ class EntityRegistry:
     @classmethod
     def register(cls, entity_class):
         cls._by_type[(entity_class.TYPE_ID, entity_class.VERSION)] = entity_class
+        return entity_class
 
     @classmethod
     def create(cls, type_id, node, entity_index, mqtt_topic_prefix):
@@ -371,21 +370,28 @@ class Sensor(StateMixin, Entity):
         ("state_topic", float_to_str, datatypes.REAL32),
     ]
 
+    def get_metadata_properties(self):
+        yield from super().get_metadata_properties()
+        yield 3, "unit_of_measurement"
+        yield 4, "state_class"
+
     def setup_object_dictionary(self, node: RemoteNode, base_index):
         super().setup_object_dictionary(node, base_index)
+        logger.info("sensor, setup od")
         node.object_dictionary[base_index].add_member(OctetString("unit_of_measurement", base_index, 3))
         node.object_dictionary[base_index].add_member(OctetString("state_class", base_index, 4))
 
 
 class MinMaxValueMixin:
-    METADATA_PROPERTIES = {
-        7: "min_value",
-        8: "max_value",
-        **COMMON_METADATA_PROPERTIES,
-    }
+
+    def get_metadata_properties(self):
+        yield from super().get_metadata_properties()
+        yield 7, "min_value"
+        yield 8, "max_value"
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
+        logger.info("min max, setup od")
         v = ODVariable("meta_min_value", base_index, 7)
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
@@ -406,7 +412,7 @@ class MinMaxValueMixin:
 
 
 @EntityRegistry.register
-class Sensor8(MinMaxValueMixin, StateMixin, Entity):
+class Sensor8(MinMaxValueMixin, Sensor):
     TYPE_ID = 6
     TYPE_NAME = "sensor"
     STATES = [
@@ -416,7 +422,7 @@ class Sensor8(MinMaxValueMixin, StateMixin, Entity):
 
 
 @EntityRegistry.register
-class Sensor16(MinMaxValueMixin, StateMixin, Entity):
+class Sensor16(MinMaxValueMixin, Sensor):
     TYPE_ID = 7
     TYPE_NAME = "sensor"
     STATES = [
@@ -454,12 +460,6 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
-    METADATA_PROPERTIES = {
-        7: "min_mireds",
-        8: "max_mireds",
-        **COMMON_METADATA_PROPERTIES,
-    }
-
     STATES = [
         ("state_topic", bool2onoff, datatypes.UNSIGNED8),
         ("brightness_state_topic", brightness_from_wire, datatypes.UNSIGNED8),
@@ -476,6 +476,11 @@ class Light(StateMixin, CommandMixin, Entity):
         "assumed_state": False,
         "supported_color_modes": ["color_temp"]
     }
+
+    def get_metadata_properties(self):
+        yield from super().get_metadata_properties()
+        yield 7, "min_mireds"
+        yield 8, "max_mireds"
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
@@ -494,7 +499,6 @@ class LightV1(StateMixin, CommandMixin, Entity):
     VERSION = 1
     TYPE_NAME = "light"
 
-
     def get_states(self):
         yield ("state_topic", bool2onoff, datatypes.UNSIGNED8)
         if self.supports_brightness():
@@ -510,8 +514,7 @@ class LightV1(StateMixin, CommandMixin, Entity):
             yield ("color_temp_command_topic", color_temp_to_wire, datatypes.UNSIGNED8)
 
     def get_metadata_properties(self):
-        for k, v in COMMON_METADATA_PROPERTIES.items():
-            yield k, v
+        yield from super().get_metadata_properties()
         if self.supports_color_temp():
             yield 7, "min_mireds"
             yield 8, "max_mireds"
@@ -539,10 +542,6 @@ class LightV1(StateMixin, CommandMixin, Entity):
     @cached_property
     def COMMANDS(self):
         return list(self.get_commands())
-
-    @cached_property
-    def METADATA_PROPERTIES(self):
-        return dict(self.get_metadata_properties())
 
     @cached_property
     def PROPS(self):
