@@ -1,4 +1,4 @@
-# v0.2.3-b1 - 2025-01-01
+# v0.2.3 - 2025-01-02
 - suport for esphome-canopen rev1:
   * LightV1 with optional brightness / color temp support
   * CoverV1 with optional position / tilt
