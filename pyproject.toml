@@ -1,6 +1,6 @@
 [project]
 name = "can2mqtt"
-version = "0.2.3-b2"
+version = "0.2.3-b3"
 authors = [
     {name="Mariusz Kryński", email="mrk@sed.pl"}
 ]
