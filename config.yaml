@@ -1,5 +1,5 @@
 name: "can2mqtt"
-description: "can2mqtt gateway"
+description: "can2mqtt gateway (dev)"
 version: "0.2.4-b1"
 slug: "can2mqtt"
 init: false
