@@ -118,7 +118,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub10]
+[1a0${TPDO}suba]
 ParameterName=TPDO${TPDO} mapping information 10
 ObjectType=7
 DataType=7
@@ -126,7 +126,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub11]
+[1a0${TPDO}subb]
 ParameterName=TPDO${TPDO} mapping information 11
 ObjectType=7
 DataType=7
@@ -134,7 +134,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub12]
+[1a0${TPDO}subc]
 ParameterName=TPDO${TPDO} mapping information 12
 ObjectType=7
 DataType=7
@@ -142,7 +142,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub13]
+[1a0${TPDO}subd]
 ParameterName=TPDO${TPDO} mapping information 13
 ObjectType=7
 DataType=7
@@ -150,7 +150,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub14]
+[1a0${TPDO}sube]
 ParameterName=TPDO${TPDO} mapping information 14
 ObjectType=7
 DataType=7
@@ -158,7 +158,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub15]
+[1a0${TPDO}subfwefwef]
 ParameterName=TPDO${TPDO} mapping information 15
 ObjectType=7
 DataType=7
@@ -166,7 +166,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a0${TPDO}sub16]
+[1a0${TPDO}sub10]
 ParameterName=TPDO${TPDO} mapping information 16
 ObjectType=7
 DataType=7

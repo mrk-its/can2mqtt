@@ -244,7 +244,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub10]
+[1a00suba]
 ParameterName=TPDO0 mapping information 10
 ObjectType=7
 DataType=7
@@ -252,7 +252,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub11]
+[1a00subb]
 ParameterName=TPDO0 mapping information 11
 ObjectType=7
 DataType=7
@@ -260,7 +260,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub12]
+[1a00subc]
 ParameterName=TPDO0 mapping information 12
 ObjectType=7
 DataType=7
@@ -268,7 +268,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub13]
+[1a00subd]
 ParameterName=TPDO0 mapping information 13
 ObjectType=7
 DataType=7
@@ -276,7 +276,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub14]
+[1a00sube]
 ParameterName=TPDO0 mapping information 14
 ObjectType=7
 DataType=7
@@ -284,7 +284,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub15]
+[1a00subfwefwef]
 ParameterName=TPDO0 mapping information 15
 ObjectType=7
 DataType=7
@@ -292,7 +292,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a00sub16]
+[1a00sub10]
 ParameterName=TPDO0 mapping information 16
 ObjectType=7
 DataType=7
@@ -420,7 +420,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub10]
+[1a01suba]
 ParameterName=TPDO1 mapping information 10
 ObjectType=7
 DataType=7
@@ -428,7 +428,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub11]
+[1a01subb]
 ParameterName=TPDO1 mapping information 11
 ObjectType=7
 DataType=7
@@ -436,7 +436,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub12]
+[1a01subc]
 ParameterName=TPDO1 mapping information 12
 ObjectType=7
 DataType=7
@@ -444,7 +444,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub13]
+[1a01subd]
 ParameterName=TPDO1 mapping information 13
 ObjectType=7
 DataType=7
@@ -452,7 +452,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub14]
+[1a01sube]
 ParameterName=TPDO1 mapping information 14
 ObjectType=7
 DataType=7
@@ -460,7 +460,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub15]
+[1a01subfwefwef]
 ParameterName=TPDO1 mapping information 15
 ObjectType=7
 DataType=7
@@ -468,7 +468,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a01sub16]
+[1a01sub10]
 ParameterName=TPDO1 mapping information 16
 ObjectType=7
 DataType=7
@@ -596,7 +596,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub10]
+[1a02suba]
 ParameterName=TPDO2 mapping information 10
 ObjectType=7
 DataType=7
@@ -604,7 +604,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub11]
+[1a02subb]
 ParameterName=TPDO2 mapping information 11
 ObjectType=7
 DataType=7
@@ -612,7 +612,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub12]
+[1a02subc]
 ParameterName=TPDO2 mapping information 12
 ObjectType=7
 DataType=7
@@ -620,7 +620,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub13]
+[1a02subd]
 ParameterName=TPDO2 mapping information 13
 ObjectType=7
 DataType=7
@@ -628,7 +628,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub14]
+[1a02sube]
 ParameterName=TPDO2 mapping information 14
 ObjectType=7
 DataType=7
@@ -636,7 +636,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub15]
+[1a02subfwefwef]
 ParameterName=TPDO2 mapping information 15
 ObjectType=7
 DataType=7
@@ -644,7 +644,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a02sub16]
+[1a02sub10]
 ParameterName=TPDO2 mapping information 16
 ObjectType=7
 DataType=7
@@ -772,7 +772,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub10]
+[1a03suba]
 ParameterName=TPDO3 mapping information 10
 ObjectType=7
 DataType=7
@@ -780,7 +780,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub11]
+[1a03subb]
 ParameterName=TPDO3 mapping information 11
 ObjectType=7
 DataType=7
@@ -788,7 +788,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub12]
+[1a03subc]
 ParameterName=TPDO3 mapping information 12
 ObjectType=7
 DataType=7
@@ -796,7 +796,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub13]
+[1a03subd]
 ParameterName=TPDO3 mapping information 13
 ObjectType=7
 DataType=7
@@ -804,7 +804,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub14]
+[1a03sube]
 ParameterName=TPDO3 mapping information 14
 ObjectType=7
 DataType=7
@@ -812,7 +812,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub15]
+[1a03subfwefwef]
 ParameterName=TPDO3 mapping information 15
 ObjectType=7
 DataType=7
@@ -820,7 +820,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a03sub16]
+[1a03sub10]
 ParameterName=TPDO3 mapping information 16
 ObjectType=7
 DataType=7
@@ -948,7 +948,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub10]
+[1a04suba]
 ParameterName=TPDO4 mapping information 10
 ObjectType=7
 DataType=7
@@ -956,7 +956,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub11]
+[1a04subb]
 ParameterName=TPDO4 mapping information 11
 ObjectType=7
 DataType=7
@@ -964,7 +964,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub12]
+[1a04subc]
 ParameterName=TPDO4 mapping information 12
 ObjectType=7
 DataType=7
@@ -972,7 +972,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub13]
+[1a04subd]
 ParameterName=TPDO4 mapping information 13
 ObjectType=7
 DataType=7
@@ -980,7 +980,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub14]
+[1a04sube]
 ParameterName=TPDO4 mapping information 14
 ObjectType=7
 DataType=7
@@ -988,7 +988,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub15]
+[1a04subfwefwef]
 ParameterName=TPDO4 mapping information 15
 ObjectType=7
 DataType=7
@@ -996,7 +996,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a04sub16]
+[1a04sub10]
 ParameterName=TPDO4 mapping information 16
 ObjectType=7
 DataType=7
@@ -1124,7 +1124,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub10]
+[1a05suba]
 ParameterName=TPDO5 mapping information 10
 ObjectType=7
 DataType=7
@@ -1132,7 +1132,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub11]
+[1a05subb]
 ParameterName=TPDO5 mapping information 11
 ObjectType=7
 DataType=7
@@ -1140,7 +1140,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub12]
+[1a05subc]
 ParameterName=TPDO5 mapping information 12
 ObjectType=7
 DataType=7
@@ -1148,7 +1148,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub13]
+[1a05subd]
 ParameterName=TPDO5 mapping information 13
 ObjectType=7
 DataType=7
@@ -1156,7 +1156,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub14]
+[1a05sube]
 ParameterName=TPDO5 mapping information 14
 ObjectType=7
 DataType=7
@@ -1164,7 +1164,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub15]
+[1a05subfwefwef]
 ParameterName=TPDO5 mapping information 15
 ObjectType=7
 DataType=7
@@ -1172,7 +1172,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a05sub16]
+[1a05sub10]
 ParameterName=TPDO5 mapping information 16
 ObjectType=7
 DataType=7
@@ -1300,7 +1300,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub10]
+[1a06suba]
 ParameterName=TPDO6 mapping information 10
 ObjectType=7
 DataType=7
@@ -1308,7 +1308,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub11]
+[1a06subb]
 ParameterName=TPDO6 mapping information 11
 ObjectType=7
 DataType=7
@@ -1316,7 +1316,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub12]
+[1a06subc]
 ParameterName=TPDO6 mapping information 12
 ObjectType=7
 DataType=7
@@ -1324,7 +1324,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub13]
+[1a06subd]
 ParameterName=TPDO6 mapping information 13
 ObjectType=7
 DataType=7
@@ -1332,7 +1332,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub14]
+[1a06sube]
 ParameterName=TPDO6 mapping information 14
 ObjectType=7
 DataType=7
@@ -1340,7 +1340,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub15]
+[1a06subfwefwef]
 ParameterName=TPDO6 mapping information 15
 ObjectType=7
 DataType=7
@@ -1348,7 +1348,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a06sub16]
+[1a06sub10]
 ParameterName=TPDO6 mapping information 16
 ObjectType=7
 DataType=7
@@ -1476,7 +1476,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub10]
+[1a07suba]
 ParameterName=TPDO7 mapping information 10
 ObjectType=7
 DataType=7
@@ -1484,7 +1484,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub11]
+[1a07subb]
 ParameterName=TPDO7 mapping information 11
 ObjectType=7
 DataType=7
@@ -1492,7 +1492,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub12]
+[1a07subc]
 ParameterName=TPDO7 mapping information 12
 ObjectType=7
 DataType=7
@@ -1500,7 +1500,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub13]
+[1a07subd]
 ParameterName=TPDO7 mapping information 13
 ObjectType=7
 DataType=7
@@ -1508,7 +1508,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub14]
+[1a07sube]
 ParameterName=TPDO7 mapping information 14
 ObjectType=7
 DataType=7
@@ -1516,7 +1516,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub15]
+[1a07subfwefwef]
 ParameterName=TPDO7 mapping information 15
 ObjectType=7
 DataType=7
@@ -1524,7 +1524,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
-[1a07sub16]
+[1a07sub10]
 ParameterName=TPDO7 mapping information 16
 ObjectType=7
 DataType=7
