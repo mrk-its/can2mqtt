@@ -44,7 +44,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a0${TPDO}sub1]
 ParameterName=TPDO${TPDO} mapping information 1
@@ -104,6 +104,70 @@ DefaultValue=0
 
 [1a0${TPDO}sub8]
 ParameterName=TPDO${TPDO} mapping information 8
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub9]
+ParameterName=TPDO${TPDO} mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub10]
+ParameterName=TPDO${TPDO} mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub11]
+ParameterName=TPDO${TPDO} mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub12]
+ParameterName=TPDO${TPDO} mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub13]
+ParameterName=TPDO${TPDO} mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub14]
+ParameterName=TPDO${TPDO} mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub15]
+ParameterName=TPDO${TPDO} mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a0${TPDO}sub16]
+ParameterName=TPDO${TPDO} mapping information 16
 ObjectType=7
 DataType=7
 AccessType=RW

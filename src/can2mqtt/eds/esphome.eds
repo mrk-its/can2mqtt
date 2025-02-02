@@ -170,7 +170,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a00sub1]
 ParameterName=TPDO0 mapping information 1
@@ -236,6 +236,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a00sub9]
+ParameterName=TPDO0 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub10]
+ParameterName=TPDO0 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub11]
+ParameterName=TPDO0 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub12]
+ParameterName=TPDO0 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub13]
+ParameterName=TPDO0 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub14]
+ParameterName=TPDO0 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub15]
+ParameterName=TPDO0 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a00sub16]
+ParameterName=TPDO0 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1801]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -282,7 +346,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a01sub1]
 ParameterName=TPDO1 mapping information 1
@@ -348,6 +412,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a01sub9]
+ParameterName=TPDO1 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub10]
+ParameterName=TPDO1 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub11]
+ParameterName=TPDO1 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub12]
+ParameterName=TPDO1 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub13]
+ParameterName=TPDO1 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub14]
+ParameterName=TPDO1 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub15]
+ParameterName=TPDO1 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a01sub16]
+ParameterName=TPDO1 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1802]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -394,7 +522,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a02sub1]
 ParameterName=TPDO2 mapping information 1
@@ -460,6 +588,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a02sub9]
+ParameterName=TPDO2 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub10]
+ParameterName=TPDO2 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub11]
+ParameterName=TPDO2 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub12]
+ParameterName=TPDO2 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub13]
+ParameterName=TPDO2 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub14]
+ParameterName=TPDO2 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub15]
+ParameterName=TPDO2 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a02sub16]
+ParameterName=TPDO2 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1803]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -506,7 +698,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a03sub1]
 ParameterName=TPDO3 mapping information 1
@@ -572,6 +764,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a03sub9]
+ParameterName=TPDO3 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub10]
+ParameterName=TPDO3 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub11]
+ParameterName=TPDO3 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub12]
+ParameterName=TPDO3 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub13]
+ParameterName=TPDO3 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub14]
+ParameterName=TPDO3 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub15]
+ParameterName=TPDO3 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a03sub16]
+ParameterName=TPDO3 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1804]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -618,7 +874,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a04sub1]
 ParameterName=TPDO4 mapping information 1
@@ -684,6 +940,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a04sub9]
+ParameterName=TPDO4 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub10]
+ParameterName=TPDO4 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub11]
+ParameterName=TPDO4 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub12]
+ParameterName=TPDO4 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub13]
+ParameterName=TPDO4 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub14]
+ParameterName=TPDO4 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub15]
+ParameterName=TPDO4 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a04sub16]
+ParameterName=TPDO4 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1805]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -730,7 +1050,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a05sub1]
 ParameterName=TPDO5 mapping information 1
@@ -796,6 +1116,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a05sub9]
+ParameterName=TPDO5 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub10]
+ParameterName=TPDO5 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub11]
+ParameterName=TPDO5 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub12]
+ParameterName=TPDO5 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub13]
+ParameterName=TPDO5 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub14]
+ParameterName=TPDO5 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub15]
+ParameterName=TPDO5 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a05sub16]
+ParameterName=TPDO5 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1806]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -842,7 +1226,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a06sub1]
 ParameterName=TPDO6 mapping information 1
@@ -908,6 +1292,70 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=0
 
+[1a06sub9]
+ParameterName=TPDO6 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub10]
+ParameterName=TPDO6 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub11]
+ParameterName=TPDO6 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub12]
+ParameterName=TPDO6 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub13]
+ParameterName=TPDO6 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub14]
+ParameterName=TPDO6 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub15]
+ParameterName=TPDO6 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a06sub16]
+ParameterName=TPDO6 mapping information 16
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
 [1807]
 ParameterName=Transmit PDO 0 communication parameters
 ObjectType=9
@@ -954,7 +1402,7 @@ AccessType=RW
 PDOMapping=0
 DefaultValue=1
 LowLimit=0
-HighLimit=4
+HighLimit=16
 
 [1a07sub1]
 ParameterName=TPDO7 mapping information 1
@@ -1014,6 +1462,70 @@ DefaultValue=0
 
 [1a07sub8]
 ParameterName=TPDO7 mapping information 8
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub9]
+ParameterName=TPDO7 mapping information 9
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub10]
+ParameterName=TPDO7 mapping information 10
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub11]
+ParameterName=TPDO7 mapping information 11
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub12]
+ParameterName=TPDO7 mapping information 12
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub13]
+ParameterName=TPDO7 mapping information 13
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub14]
+ParameterName=TPDO7 mapping information 14
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub15]
+ParameterName=TPDO7 mapping information 15
+ObjectType=7
+DataType=7
+AccessType=RW
+PDOMapping=0
+DefaultValue=0
+
+[1a07sub16]
+ParameterName=TPDO7 mapping information 16
 ObjectType=7
 DataType=7
 AccessType=RW
