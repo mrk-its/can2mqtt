@@ -134,6 +134,14 @@ def get_tptd_cb(mqtt_client):
     return on_tptd
 
 
+def od_variable(_type, name, index, subindex, default=None):
+    var = ODVariable(name, index, subindex)
+    var.data_type = _type
+    if default is not None:
+        var.default = default
+    return var
+
+
 async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, revision: int):
 
     try:
@@ -205,12 +213,8 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
     entity_types_index = 0x2000 if revision == 0 else 0x2001
 
     entity_types = ODArray("EntityTypes", entity_types_index)
-    entity_types_len = ODVariable("EntityTypes_len", entity_types_index, 0)
-    entity_types_len.data_type = datatypes.UNSIGNED8
-    entity_types.add_member(entity_types_len)
-    item = ODVariable("EntityTypes_item1", entity_types_index, 1)
-    item.data_type = data_type
-    entity_types.add_member(item)
+    entity_types.add_member(od_variable(datatypes.UNSIGNED8, "EntityTypes_len", entity_types_index, 0))
+    entity_types.add_member(od_variable(data_type, "EntityTypes_item1", entity_types_index, 1))
     node.object_dictionary.add_object(entity_types)
 
     node_entity_ids = set()
@@ -265,7 +269,6 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
         map.clear()
         map.callbacks.clear()  # probably above clear should do that??
 
-    logger.debug("reading tpdo config")
     await node.tpdo.aread()
 
     on_tptd = get_tptd_cb(mqtt_client)
@@ -275,7 +278,6 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
     if node.update_entity:
         rev, _ = FIRMWARE_MAP[node.id]
         await node.update_entity.publish_version(mqtt_client, rev)
-
 
 
 async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Network, node: RemoteNode):
@@ -307,6 +309,32 @@ async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Networ
     node.is_initialized = True
 
 
+def setup_common_od(od):
+    for tpdo_index in range(8):
+        tpdo_params = ODRecord(f"TPDO{tpdo_index}_params", 0x1800 + tpdo_index)
+        tpdo_params.add_member(
+            od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_params_len", 0x1800 + tpdo_index, 0, default=2)
+        )
+        tpdo_params.add_member(od_variable(datatypes.UNSIGNED32, f"TPDO{tpdo_index}_cob_id", 0x1800 + tpdo_index, 1))
+        tpdo_params.add_member(od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_transmission_type", 0x1800 + tpdo_index, 2))
+        od.add_object(tpdo_params)
+
+        tpdo_mappings = ODRecord(f"TPDO{tpdo_index}_mappings", 0x1a00 + tpdo_index)
+        tpdo_mappings.add_member(
+            od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_mappings_len", 0x1a00 + tpdo_index, 0, default=64)
+        )
+        for subidx in range(64):
+            tpdo_mappings.add_member(
+                od_variable(
+                    datatypes.UNSIGNED32,
+                    f"TPDO{tpdo_index}_mappings_item{subidx+1}",
+                    0x1a00 + tpdo_index,
+                    subidx+1,
+                )
+            )
+        od.add_object(tpdo_mappings)
+
+
 async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
     watchdog_timer.reset()
     await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
@@ -316,6 +344,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
             node = can_network.get(node_id)
             if not node:
                 od = import_od(os.path.join(BASE_DIR, "eds/esphome.eds"))
+                setup_common_od(od)
                 node = can_network.add_node(node_id, od)
                 if sdo_response_timeout is not None:
                     node.sdo.RESPONSE_TIMEOUT = sdo_response_timeout

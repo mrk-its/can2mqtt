@@ -10,6 +10,7 @@ import can
 
 def main():
     logging.getLogger("canopen.pdo.base").level = logging.WARNING
+
     # patch bug in canopen-async
     asyncio.iscouroutine = asyncio.iscoroutine
 
