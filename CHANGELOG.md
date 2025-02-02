@@ -1,3 +1,6 @@
+# v0.2.4 - 2025-02-02
+- support more TPDO mapping entries
+
 # v0.2.3 - 2025-01-02
 - suport for esphome-canopen rev1:
   * LightV1 with optional brightness / color temp support
