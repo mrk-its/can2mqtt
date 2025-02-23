@@ -1,3 +1,6 @@
+# v0.2.5 - 2025-02-23
+- CAN OTA (firmware updates via CAN) bugfixes
+
 # v0.2.4 - 2025-02-02
 - support more TPDO mapping entries
 
