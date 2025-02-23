@@ -10,9 +10,11 @@ This project tries to fill the gap and provides tools for easy exposing ESPHome 
 # How to start
 ## Hardware requirements
  * Linux box with CAN Bus controller [supported](https://python-can.readthedocs.io/en/stable/interfaces.html) by python-can library
- * ESP32 board flashed with ESPHome firmware and configured [esphome-canopen](https://github.com/mrk-its/esphome-canopen) external component.
+ * ESP32 board(s) flashed with ESPHome firmware and configured [esphome-canopen](https://github.com/mrk-its/esphome-canopen) external component.
 
- There is also [esphome-canbus-proxy](https://github.com/mrk-its/esphome-canbus-proxy) project turning ESP32 S3/C3 device into USB-CAN interface, with dedicated python-can driver (it is also possible to install `esphome-canbus-proxy` component on one of existing ESP32 CANOpen nodes).
+ There is also [esphome-canbus-usb-serial](https://github.com/mrk-its/esphome-canbus-usb-serial) project turning ESP32 S3/C3 device into USB-CAN interface, with dedicated python-can driver (it is also possible to install `esphome-canbus-usb-serial` component on one of existing ESP32 CANOpen nodes).
+
+ Another way of connecting CANBUS to HA is [esphome-canbus-udp-multicast](https://github.com/mrk-its/esphome-canbus-udp-multicast). It implements `udp_multicast` virtual CANBUS interface and allow to bridge existing CANBUS network to PC via UDP multicasts. It also makes possible to create 'virtual' CAN network with nodes communicating only via UDP packets. It is especially convenient for developing / testing / debugging (a lot of can2mqtt / esphome-canopen features were developed this way)
 
 ## Software requirements
  * MQTT Broker installed and configured in Home Assistant (with auto-discovery), take a look on [documentation](https://www.home-assistant.io/integrations/mqtt/) for details
