@@ -61,6 +61,34 @@ included in python-can configuration file, like:
 If CAN Bus communication is working properly you should see on stdout received CAN frames and data published to MQTT topics.
 In HomeAssistant you should see new entities like `switch.can_001_02`
 
+# Firmware updates via CAN (CAN OTA)
+
+can2mqtt and esphome-canopen together support firmware upgrades via CANBUS:
+
+* make sure there is `canopen ota` platform present in esphome's yaml file:
+  ```
+  ota:
+    - platform: canopen
+  ```
+* compile your node's firmware with
+  ```
+  esphome compile node.yaml
+  ```
+  resulting `firmware.bin` typically is located in:
+  ```
+  .esphome/build/node-xyz/.pioenvs/node-xyz/firmware.bin
+  ```
+
+* copy resulting `firmware.bin` to proper firmware directory monitored by can2mqtt.
+  - if can2mqtt is installed as an addon of HA supervised, then can2mqtt is ran with `--firmware=/config` parameter, mapped to `/addon_configs/{SLUG}_can2mqtt/` shared directory. SLUG is 8-hexdigit value that can be found on addon's page. It is recommended to create subdirectory for each node and put `firmware.bin` file there, and copy file to path like: `/addon_configs/{SLUG}_can2mqtt/node-xyz/firmware.bin`
+  - if can2mqtt is installed standalone, then `--firmware` option can be used to provide firmware directory (it defaults to './firmware`)
+* after copying firmware file following message should appear in can2mqtt logs:
+  ```
+  2025-02-23 17:04:47 can2mqtt.entities  INFO new_firmware: /config/node-xyz/firmware.bin, node_id: ..., ver: 2025.2.0.20250223.001140
+  ```
+  and new update should be visible in HA
+* update may be installed via standard HA update interface, the update progress / final status should be visible in `can2mqtt` logs. When update is finished node will be restarted and should be re-registered in `can2mqtt`.
+
 # Support
 
 * [Discord Server](https://discord.gg/VXjUSnUWsd)
