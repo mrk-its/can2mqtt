@@ -1,9 +1,9 @@
 name: "can2mqtt"
-description: "can2mqtt gateway (dev)"
+description: "can2mqtt gateway"
 slug: "can2mqtt"
 init: false
 
-version: "0.2.5-b3"
+version: "0.2.5"
 
 usb: true
 uart: true
