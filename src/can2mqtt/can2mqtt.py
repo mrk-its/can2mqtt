@@ -420,6 +420,15 @@ async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_clie
             payload = compressed
         else:
             logger.info("firmware size: %d", len(payload))
+
+        event_loop = asyncio.get_event_loop()
+        def progress_cb(pos, size):
+            try:
+                event_loop.create_task(node.update_entity.publish_progress(mqtt_client, pos, size))
+            except Exception as e:
+                print(e)
+
+        node.sdo.progress_cb = progress_cb
         await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
         dt = time.time() - t
         logger.info(

@@ -354,6 +354,16 @@ class Update(Entity):
     async def mqtt_initial_publish(self, mqtt_client):
         await self.publish_version(mqtt_client, None)
 
+    async def publish_progress(self, mqtt_client, pos, size):
+        if not size:
+            return
+        json_attr_topic = self.get_json_attributes_topic()
+        payload = json.dumps({
+            "in_progress": True,
+            "update_percentage": pos * 100 // size,
+        })
+        await mqtt_client.publish(json_attr_topic, payload=payload, retain=False)
+
 
 @EntityRegistry.register
 class NMTStateSensor(Entity):
