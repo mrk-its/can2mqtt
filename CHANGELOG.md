@@ -1,3 +1,7 @@
+# v0.2.6 - 2025-05-04
+- CAN OTA: compress firmware only if device supports compression
+- fix Update entity
+
 # v0.2.5 - 2025-02-23
 - CAN OTA (firmware updates via CAN) bugfixes
 

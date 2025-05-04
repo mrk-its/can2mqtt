@@ -3,7 +3,7 @@ description: "can2mqtt gateway"
 slug: "can2mqtt"
 init: false
 
-version: "0.2.5"
+version: "0.2.6"
 
 usb: true
 uart: true
