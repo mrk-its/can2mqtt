@@ -19,13 +19,18 @@ VER_RE = re.compile(rb"node_id: ([\da-f]{2}), ver: (\d{4}\.\d{1,2}\.\d{1,2}(?:-\
 FIRMWARE_DIR = "firmwares"
 
 
+def cleanup_version(ver_str):
+    # AwesomeVersion doesn't like "-dev" suffix in ESPHome version string
+    return ver_str.replace("-dev", "")
+
+
 def parse_fw(path):
     with open(path, 'rb') as fw:
         matched = VER_RE.search(fw.read())
         if matched:
             node_id, esp_rev = matched.groups()
             node_id = int(node_id, 16)
-            esp_rev = AwesomeVersion(esp_rev.decode())
+            esp_rev = AwesomeVersion(cleanup_version(esp_rev.decode()))
             return node_id, esp_rev
         else:
             logger.debug("cannot parse %s, skipping", path)

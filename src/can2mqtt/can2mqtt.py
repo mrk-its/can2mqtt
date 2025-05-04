@@ -27,6 +27,7 @@ from .utils import parse_mqtt_server_url
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
 from . import firmware_scanner
 
+from .firmware_scanner import cleanup_version
 
 CODE_SUBINDEX_NOT_FOUND = 0x06090011
 CODE_OBJECT_NOT_FOUND = 0x06020000
@@ -145,7 +146,7 @@ def od_variable(_type, name, index, subindex, default=None):
 async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, revision: int):
 
     try:
-        node.sw_version = await node.sdo["SoftwareVersion"].aget_raw()
+        node.sw_version = cleanup_version(await node.sdo["SoftwareVersion"].aget_raw())
     except SdoAbortedError as e:
         node.sw_version = None
 
@@ -186,15 +187,20 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
     await entity.publish_config(mqtt_client)
     logger.info("  entity: %r", entity)
 
+    supports_firmware_update = 0
+    firmware_flags = 1  # firmware compression is enabled by default
     try:
-        has_firmware_update = await node.sdo["Firmware"]["Firmware Max Index"].aget_raw()
+        supports_firmware_update = bool(await node.sdo["Firmware"]["Firmware Max Index"].aget_raw())
+        if supports_firmware_update:
+            firmware_flags = await node.sdo["Firmware"]["Firmware Flags"].aget_raw()
     except SdoAbortedError as e:
-        has_firmware_update = 0
+        pass
 
     update_entity = EntityRegistry.create(
         255, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
     )
-    update_entity.disable_upload = not has_firmware_update
+    update_entity.disable_upload = not supports_firmware_update
+    update_entity.flags = firmware_flags
 
     await update_entity.publish_config(mqtt_client)
     logger.info("  entity: %r", update_entity)
@@ -394,7 +400,7 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
             raise QuitException("watchdog timeout", WATCHDOG_TIMEOUT_EXIT_CODE)
 
 
-async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_client=None):
+async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_client=None, compress=False):
     node: RemoteNode = can_network.get(node_id)
     if not node:
         logger.warning("node %d doesn't exist", node_id)
@@ -407,14 +413,18 @@ async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_clie
         firmware = node.sdo["Firmware"]
         await firmware["Firmware Size"].aset_raw(len(payload))
         await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
-        logger.info("writing Firmware Data (block transfer)")
-        compressed = zlib.compress(payload)
-        logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
-        await firmware["Firmware Data"].aset_data(compressed, block_transfer=True)
+        logger.info("writing Firmware Data (block transfer), compression: %s", compress)
+        if compress:
+            compressed = zlib.compress(payload)
+            logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
+            payload = compressed
+        else:
+            logger.info("firmware size: %d", len(payload))
+        await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
         dt = time.time() - t
         logger.info(
             "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
-            len(compressed), node_id, dt, len(compressed) / dt
+            len(payload), node_id, dt, len(payload) / dt
         )
     except Exception as e:
         logger.exception("firmware update error: %s", e)
@@ -486,7 +496,9 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         cmd = int(message.payload.decode("utf-8"))
                         logger.info("sent nmt command %d to node %s", cmd, node_id)
                         can_network.send_message(0, [cmd, int(node_id, 16)])
-                    case (node_id, "update", _):
+                    case (node_id, "update", arg):
+                        flags = int(arg[1:])
+                        compress = bool(flags & 1)
                         node_id = int(node_id, 16)
                         node = can_network.get(node_id)
                         node.update_entity.disable_upload = True
@@ -495,11 +507,13 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         logger.info("firmware update, node_id: %s, rev: %s, path: %s", node_id, rev, path)
                         with open(path, "rb") as f:
                             asyncio.create_task(
-                                firmware_upload(can_network, node_id, f.read(), mqtt_client)
+                                firmware_upload(can_network, node_id, f.read(), mqtt_client, compress)
                             )
-                    case (node_id, "firmware", _):
+                    case (node_id, "firmware", arg):
+                        flags = int(arg[1:])
+                        compress = bool(flags & 1)
                         asyncio.create_task(
-                            firmware_upload(can_network, int(node_id, 16), message.payload)
+                            firmware_upload(can_network, int(node_id, 16), message.payload, compress)
                         )
                     case (node_id, "write", arg):
                         arg = arg[1:]

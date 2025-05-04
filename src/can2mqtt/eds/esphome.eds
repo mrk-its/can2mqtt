@@ -161,3 +161,9 @@ ObjectType=7
 DataType=0xf
 AccessType=W
 
+[3000sub5]
+ParameterName=Firmware Flags
+ObjectType=7
+DataType=7
+AccessType=R
+

@@ -316,16 +316,21 @@ class Update(Entity):
     ]
 
     disable_upload = False
+    flags = 0
 
     def get_state_topic(self):
         return f"{self.mqtt_topic_prefix}/node_state_{self.node.id:03x}/update"
 
+    def get_json_attributes_topic(self):
+        return f"{self.mqtt_topic_prefix}/node_json_attr_{self.node.id:03x}/update"
+
     def get_command_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update"
+        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update/{self.flags}"
 
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
         config["state_topic"] = self.get_state_topic()
+        config["json_attributes_topic"] = self.get_json_attributes_topic()
 
         config["device_class"] = "firmware"
         config["name"] = "Update"
@@ -337,12 +342,14 @@ class Update(Entity):
 
     async def publish_version(self, mqtt_client, ver):
         state_topic = self.get_state_topic()
+        json_attr_topic = self.get_json_attributes_topic()
         payload = json.dumps({
             "installed_version": self.node.sw_version,
             "latest_version": ver or self.node.sw_version
         })
         logger.info("publish_version: %s", payload)
         await mqtt_client.publish(state_topic, payload=payload, retain=False)
+        await mqtt_client.publish(json_attr_topic, payload=payload, retain=False)
 
     async def mqtt_initial_publish(self, mqtt_client):
         await self.publish_version(mqtt_client, None)
