@@ -4,7 +4,7 @@ FROM $BUILD_FROM as builder
 RUN apk add --no-cache py3-pip git g++ make python3-dev
 COPY ./ /app/
 
-RUN pip install --user /app
+RUN pip install --break-system-packages --user /app
 
 FROM $BUILD_FROM
 RUN apk add python3
