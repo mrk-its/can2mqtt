@@ -1,3 +1,7 @@
+# v0.2.7 - 2025-05-30
+- CAN OTA: show progress bar
+- add pyasyncore to deps
+
 # v0.2.6 - 2025-05-04
 - CAN OTA: compress firmware only if device supports compression
 - fix Update entity
