@@ -4,7 +4,7 @@ slug: "can2mqtt"
 init: false
 
 version: "0.2.7"
-
+homeassistant: "2025.5.3"
 usb: true
 uart: true
 udev: true
