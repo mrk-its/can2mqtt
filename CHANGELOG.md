@@ -1,3 +1,6 @@
+# v0.2.8 - 2025-07-06
+- rebuild with last canopen-asyncio (fixes update progress bar)
+
 # v0.2.7 - 2025-05-30
 - CAN OTA: show progress bar
 - add pyasyncore to deps
