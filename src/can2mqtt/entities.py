@@ -13,6 +13,7 @@ class OctetString(ODVariable):
         super().__init__(name, index, subindex)
         self.data_type = datatypes.OCTET_STRING
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +25,9 @@ def onoff2bool(value):
     return value == b"ON"
 
 
-def scale_to_wire(value: float|str, min_val: float, max_val: float, max_int: int) -> int:
+def scale_to_wire(
+    value: float | str, min_val: float, max_val: float, max_int: int
+) -> int:
     value = float(value)
     if math.isnan(value):
         return max_int
@@ -38,7 +41,7 @@ def scale_from_wire(value: int, min_val: float, max_val: float, max_int: int) ->
     return value * (max_val - min_val) / (max_int - 1) + min_val
 
 
-def percentage_to_wire(value: float|str):
+def percentage_to_wire(value: float | str):
     return scale_to_wire(value, 0.0, 100.0, 255)
 
 
@@ -46,22 +49,23 @@ def percentage_from_wire(value: int):
     return scale_from_wire(value, 0.0, 100.0, 255)
 
 
-def color_temp_to_wire(value: float|str) -> int:
-  value = float(value)
-  return scale_to_wire(value, 100.0, 1000.0, 255)
+def color_temp_to_wire(value: float | str) -> int:
+    value = float(value)
+    return scale_to_wire(value, 100.0, 1000.0, 255)
 
 
 def color_temp_from_wire(value: int) -> float:
-  # round to int, floats are not expected on mqtt state topic
-  return int(scale_from_wire(value, 100.0, 1000.0, 255))
+    # round to int, floats are not expected on mqtt state topic
+    return int(scale_from_wire(value, 100.0, 1000.0, 255))
 
 
-def brightness_to_wire(brightness: float|str):
+def brightness_to_wire(brightness: float | str):
     return scale_to_wire(brightness, 0, 254, 255)
 
 
 def brightness_from_wire(value):
     return scale_from_wire(value, 0, 254, 255)
+
 
 class StateMixin:
     _node_state_key_2_entity = defaultdict(dict)
@@ -112,7 +116,9 @@ class StateMixin:
 
     async def mqtt_initial_publish(self, mqtt_client):
         for state_key in self.state_map:
-            value = await self.node.sdo[state_key>>16][(state_key >> 8) & 0xff].aget_raw()
+            value = await self.node.sdo[state_key >> 16][
+                (state_key >> 8) & 0xFF
+            ].aget_raw()
             topic, mqtt_value = self.get_mqtt_state(state_key, value)
             await mqtt_client.publish(topic, mqtt_value, retain=False)
 
@@ -217,15 +223,11 @@ class Entity:
     async def delete_config(self, mqtt_client):
         config_topic = self.get_mqtt_config_topic()
         logger.debug("delete mqtt config_topic: %r", config_topic)
-        await mqtt_client.publish(
-            config_topic, payload=None, retain=False
-        )
+        await mqtt_client.publish(config_topic, payload=None, retain=False)
 
     async def remove_config(self, mqtt_client):
         config_topic = self.get_mqtt_config_topic()
-        await mqtt_client.publish(
-            config_topic, payload=b'', retain=False
-        )
+        await mqtt_client.publish(config_topic, payload=b"", retain=False)
 
     def set_property(self, key, value):
         self.props[key] = value
@@ -264,17 +266,22 @@ class Entity:
 
     def __repr__(self):
         args = []
-        args.append(f"node_id={self.node.id}")
+        args.append(f"node_id=0x{self.node.id:02x}")
         args.append(f"entity_index={self.entity_index}")
         args.append(f"props={self.props}")
         args_str = ", ".join(args)
         return f"{self.__class__.__name__}({args_str})"
 
     def setup_object_dictionary(self, node: RemoteNode, base_index):
-        node.object_dictionary.add_object(ODRecord(f"node {node.id:02x} metadata", base_index))
-        node.object_dictionary[base_index].add_member(OctetString("name", base_index, 1))
-        node.object_dictionary[base_index].add_member(OctetString("device_class", base_index, 2))
-
+        node.object_dictionary.add_object(
+            ODRecord(f"node {node.id:02x} metadata", base_index)
+        )
+        node.object_dictionary[base_index].add_member(
+            OctetString("name", base_index, 1)
+        )
+        node.object_dictionary[base_index].add_member(
+            OctetString("device_class", base_index, 2)
+        )
 
     def set_metadata_property(self, key, value):
         if isinstance(value, bytes):
@@ -289,6 +296,7 @@ class Entity:
     async def mqtt_initial_publish(self, _mqtt_client):
         pass
 
+
 class EntityRegistry:
     _by_type = {}
 
@@ -299,12 +307,14 @@ class EntityRegistry:
 
     @classmethod
     def create(cls, type_id, node, entity_index, mqtt_topic_prefix):
-        version = (type_id >> 8) & 0xff
-        caps = (type_id >> 16) & 0xffff
-        type_id = type_id & 0xff
+        version = (type_id >> 8) & 0xFF
+        caps = (type_id >> 16) & 0xFFFF
+        type_id = type_id & 0xFF
         logger.info("type_id: %s, version: %s, caps: %s", type_id, version, caps)
 
-        return cls._by_type[(type_id, version)](node, entity_index, mqtt_topic_prefix, caps)
+        return cls._by_type[(type_id, version)](
+            node, entity_index, mqtt_topic_prefix, caps
+        )
 
 
 @EntityRegistry.register
@@ -325,7 +335,9 @@ class Update(Entity):
         return f"{self.mqtt_topic_prefix}/node_json_attr_{self.node.id:03x}/update"
 
     def get_command_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update/{self.flags}"
+        return (
+            f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update/{self.flags}"
+        )
 
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
@@ -343,10 +355,12 @@ class Update(Entity):
     async def publish_version(self, mqtt_client, ver):
         state_topic = self.get_state_topic()
         json_attr_topic = self.get_json_attributes_topic()
-        payload = json.dumps({
-            "installed_version": self.node.sw_version,
-            "latest_version": ver or self.node.sw_version
-        })
+        payload = json.dumps(
+            {
+                "installed_version": self.node.sw_version,
+                "latest_version": ver or self.node.sw_version,
+            }
+        )
         logger.info("publish_version: %s", payload)
         await mqtt_client.publish(state_topic, payload=payload, retain=False)
         await mqtt_client.publish(json_attr_topic, payload=payload, retain=False)
@@ -358,10 +372,12 @@ class Update(Entity):
         if not size:
             return
         json_attr_topic = self.get_json_attributes_topic()
-        payload = json.dumps({
-            "in_progress": True,
-            "update_percentage": pos * 100 // size,
-        })
+        payload = json.dumps(
+            {
+                "in_progress": True,
+                "update_percentage": pos * 100 // size,
+            }
+        )
         await mqtt_client.publish(json_attr_topic, payload=payload, retain=False)
 
 
@@ -383,7 +399,7 @@ class NMTStateSensor(Entity):
 
 
 def float_to_str(value):
-    return not math.isnan(value) and str(value) or ''
+    return not math.isnan(value) and str(value) or ""
 
 
 @EntityRegistry.register
@@ -402,12 +418,15 @@ class Sensor(StateMixin, Entity):
     def setup_object_dictionary(self, node: RemoteNode, base_index):
         super().setup_object_dictionary(node, base_index)
         logger.info("sensor, setup od")
-        node.object_dictionary[base_index].add_member(OctetString("unit_of_measurement", base_index, 3))
-        node.object_dictionary[base_index].add_member(OctetString("state_class", base_index, 4))
+        node.object_dictionary[base_index].add_member(
+            OctetString("unit_of_measurement", base_index, 3)
+        )
+        node.object_dictionary[base_index].add_member(
+            OctetString("state_class", base_index, 4)
+        )
 
 
 class MinMaxValueMixin:
-
     def canopen_metadata_properties(self):
         yield from super().canopen_metadata_properties()
         yield 7, "min_value"
@@ -482,10 +501,7 @@ class Light(StateMixin, CommandMixin, Entity):
     TYPE_ID = 5
     TYPE_NAME = "light"
 
-    PROPS = {
-        "assumed_state": False,
-        "supported_color_modes": ["color_temp"]
-    }
+    PROPS = {"assumed_state": False, "supported_color_modes": ["color_temp"]}
 
     def states(self):
         yield "state_topic", bool2onoff, datatypes.UNSIGNED8
@@ -546,14 +562,9 @@ class LightV1(StateMixin, CommandMixin, Entity):
             4: "color_temp",
         }
 
-        supported_color_modes = [
-            v
-            for k, v in color_modes.items()
-            if self.caps & k
-        ]
+        supported_color_modes = [v for k, v in color_modes.items() if self.caps & k]
 
         yield "supported_color_modes", supported_color_modes
-
 
     @cached_property
     def PROPS(self):
@@ -574,7 +585,6 @@ class LightV1(StateMixin, CommandMixin, Entity):
         v = ODVariable("max_mireds", base_index, 8)
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
-
 
 
 @EntityRegistry.register
@@ -614,7 +624,6 @@ class CoverV1(StateMixin, CommandMixin, Entity):
     TYPE_ID = 4
     VERSION = 1
     TYPE_NAME = "cover"
-
 
     def get_props(self):
         if self.caps & 1:
@@ -663,6 +672,7 @@ class Number(StateMixin, CommandMixin, Entity):
 
     def commands(self):
         yield "command_topic", float, datatypes.REAL32
+
 
 @EntityRegistry.register
 class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):

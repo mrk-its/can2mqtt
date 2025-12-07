@@ -100,6 +100,7 @@ def reload_node(node):
         map.clear()
         map.callbacks.clear()  # probably above clear should do that??
 
+
 def get_heartbeat_cb(mqtt_client, node):
     def on_heartbeat(status):
         watchdog_timer.reset()
@@ -112,6 +113,7 @@ def get_heartbeat_cb(mqtt_client, node):
             asyncio.create_task(
                 mqtt_client.publish(state_topic, payload=str(status), retain=False)
             )
+
     return on_heartbeat
 
 
@@ -132,6 +134,7 @@ def get_tptd_cb(mqtt_client):
                     logger.error("%s", e)
             else:
                 logger.warning("no entity for node: %d, key: %08x", node_id, key)
+
     return on_tptd
 
 
@@ -143,8 +146,9 @@ def od_variable(_type, name, index, subindex, default=None):
     return var
 
 
-async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, revision: int):
-
+async def process_node(
+    mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, revision: int
+):
     try:
         node.sw_version = cleanup_version(await node.sdo["SoftwareVersion"].aget_raw())
     except SdoAbortedError as e:
@@ -160,9 +164,7 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
         pass
 
     try:
-        node.prod_heartbeat_time = await node.sdo[
-            "ProducerHeartbeatTime"
-        ].aget_raw()
+        node.prod_heartbeat_time = await node.sdo["ProducerHeartbeatTime"].aget_raw()
         if not node.has_nmt_callback:
             node.nmt.add_hearbeat_callback(get_heartbeat_cb(mqtt_client, node))
             node.has_nmt_callback = True
@@ -170,7 +172,6 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
         pass
 
     props = [
-        ("node_id", node.id),
         ("node_id", f"{node.id:02x}"),
         ("device name", node.device_name),
         ("heartbeat time (ms)", node.prod_heartbeat_time),
@@ -180,9 +181,7 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
 
     logger.info(", ".join(f"{k}: {v}" for k, v in props))
 
-    entity = EntityRegistry.create(
-        0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix
-    )
+    entity = EntityRegistry.create(0, node, 0, mqtt_topic_prefix=mqtt_topic_prefix)
     node.ntm_state_entity = entity
     entity.set_property("name", "NMT State")
     await entity.publish_config(mqtt_client)
@@ -191,7 +190,9 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
     supports_firmware_update = 0
     firmware_flags = 1  # firmware compression is enabled by default
     try:
-        supports_firmware_update = bool(await node.sdo["Firmware"]["Firmware Max Index"].aget_raw())
+        supports_firmware_update = bool(
+            await node.sdo["Firmware"]["Firmware Max Index"].aget_raw()
+        )
         if supports_firmware_update:
             firmware_flags = await node.sdo["Firmware"]["Firmware Flags"].aget_raw()
     except SdoAbortedError as e:
@@ -220,8 +221,12 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
     entity_types_index = 0x2000 if revision == 0 else 0x2001
 
     entity_types = ODArray("EntityTypes", entity_types_index)
-    entity_types.add_member(od_variable(datatypes.UNSIGNED8, "EntityTypes_len", entity_types_index, 0))
-    entity_types.add_member(od_variable(data_type, "EntityTypes_item1", entity_types_index, 1))
+    entity_types.add_member(
+        od_variable(datatypes.UNSIGNED8, "EntityTypes_len", entity_types_index, 0)
+    )
+    entity_types.add_member(
+        od_variable(data_type, "EntityTypes_item1", entity_types_index, 1)
+    )
     node.object_dictionary.add_object(entity_types)
 
     node_entity_ids = set()
@@ -247,12 +252,8 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
             continue
 
         base_index = 0x2000 + entity_index * 16
-        node.object_dictionary.add_object(ODRecord(
-            "states", base_index + 1
-        ))
-        node.object_dictionary.add_object(ODRecord(
-            "cmds", base_index + 2
-        ))
+        node.object_dictionary.add_object(ODRecord("states", base_index + 1))
+        node.object_dictionary.add_object(ODRecord("cmds", base_index + 2))
 
         entity.setup_object_dictionary(node, base_index)
 
@@ -287,8 +288,9 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
         await node.update_entity.publish_version(mqtt_client, rev)
 
 
-async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Network, node: RemoteNode):
-
+async def register_node(
+    mqtt_client, mqtt_topic_prefix: str, can_network: Network, node: RemoteNode
+):
     try:
         vendor_id = await node.sdo["Identity"]["VendorId"].aget_raw()
         product_code = await node.sdo["Identity"]["ProductCode"].aget_raw()
@@ -297,7 +299,9 @@ async def register_node(mqtt_client, mqtt_topic_prefix: str, can_network: Networ
         logger.warning("node: %02x can't read identity info, skipping", node.id)
         return
 
-    node.is_supported = (vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE)
+    node.is_supported = (
+        vendor_id == ESPHOME_VENDOR_ID and product_code == ESPHOME_PRODUCT_CODE
+    )
 
     if not node.is_supported:
         logger.warning(
@@ -320,29 +324,58 @@ def setup_common_od(od):
     for tpdo_index in range(8):
         tpdo_params = ODRecord(f"TPDO{tpdo_index}_params", 0x1800 + tpdo_index)
         tpdo_params.add_member(
-            od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_params_len", 0x1800 + tpdo_index, 0, default=2)
+            od_variable(
+                datatypes.UNSIGNED8,
+                f"TPDO{tpdo_index}_params_len",
+                0x1800 + tpdo_index,
+                0,
+                default=2,
+            )
         )
-        tpdo_params.add_member(od_variable(datatypes.UNSIGNED32, f"TPDO{tpdo_index}_cob_id", 0x1800 + tpdo_index, 1))
-        tpdo_params.add_member(od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_transmission_type", 0x1800 + tpdo_index, 2))
+        tpdo_params.add_member(
+            od_variable(
+                datatypes.UNSIGNED32, f"TPDO{tpdo_index}_cob_id", 0x1800 + tpdo_index, 1
+            )
+        )
+        tpdo_params.add_member(
+            od_variable(
+                datatypes.UNSIGNED8,
+                f"TPDO{tpdo_index}_transmission_type",
+                0x1800 + tpdo_index,
+                2,
+            )
+        )
         od.add_object(tpdo_params)
 
-        tpdo_mappings = ODRecord(f"TPDO{tpdo_index}_mappings", 0x1a00 + tpdo_index)
+        tpdo_mappings = ODRecord(f"TPDO{tpdo_index}_mappings", 0x1A00 + tpdo_index)
         tpdo_mappings.add_member(
-            od_variable(datatypes.UNSIGNED8, f"TPDO{tpdo_index}_mappings_len", 0x1a00 + tpdo_index, 0, default=64)
+            od_variable(
+                datatypes.UNSIGNED8,
+                f"TPDO{tpdo_index}_mappings_len",
+                0x1A00 + tpdo_index,
+                0,
+                default=64,
+            )
         )
         for subidx in range(64):
             tpdo_mappings.add_member(
                 od_variable(
                     datatypes.UNSIGNED32,
-                    f"TPDO{tpdo_index}_mappings_item{subidx+1}",
-                    0x1a00 + tpdo_index,
-                    subidx+1,
+                    f"TPDO{tpdo_index}_mappings_item{subidx + 1}",
+                    0x1A00 + tpdo_index,
+                    subidx + 1,
                 )
             )
         od.add_object(tpdo_mappings)
 
 
-async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_timeout=None, sdo_max_retries=None):
+async def can_reader(
+    can_network,
+    mqtt_client,
+    mqtt_topic_prefix,
+    sdo_response_timeout=None,
+    sdo_max_retries=None,
+):
     watchdog_timer.reset()
     await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
 
@@ -358,7 +391,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                 if sdo_max_retries is not None:
                     node.sdo.MAX_RETRIES = sdo_max_retries
 
-                node.is_initialized = False  # basic initialization was done, reset on node reboot
+                node.is_initialized = (
+                    False  # basic initialization was done, reset on node reboot
+                )
                 node.is_supported = False  # it is ESPHome node
 
                 node.last_heartbeat_time = time.time()
@@ -378,7 +413,10 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
             if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
                     logger.info("registering node: %02x", node.id)
-                    await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
+                    await register_node(
+                        mqtt_client, mqtt_topic_prefix, can_network, node
+                    )
+                    just_registered = True
                 except SdoCommunicationError as e:
                     logger.warning("node: %02x: %r", node.id, e)
                 except:
@@ -408,7 +446,9 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
             raise QuitException("watchdog timeout", WATCHDOG_TIMEOUT_EXIT_CODE)
 
 
-async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_client=None, compress=False):
+async def firmware_upload(
+    can_network: Network, node_id: int, payload, mqtt_client=None, compress=False
+):
     node: RemoteNode = can_network.get(node_id)
     if not node:
         logger.warning("node %d doesn't exist", node_id)
@@ -424,15 +464,20 @@ async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_clie
         logger.info("writing Firmware Data (block transfer), compression: %s", compress)
         if compress:
             compressed = zlib.compress(payload)
-            logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
+            logger.info(
+                "firmware size: %d, compressed: %d", len(payload), len(compressed)
+            )
             payload = compressed
         else:
             logger.info("firmware size: %d", len(payload))
 
         event_loop = asyncio.get_event_loop()
+
         def progress_cb(pos, size):
             try:
-                event_loop.create_task(node.update_entity.publish_progress(mqtt_client, pos, size))
+                event_loop.create_task(
+                    node.update_entity.publish_progress(mqtt_client, pos, size)
+                )
             except Exception as e:
                 print(e)
 
@@ -441,7 +486,10 @@ async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_clie
         dt = time.time() - t
         logger.info(
             "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
-            len(payload), node_id, dt, len(payload) / dt
+            len(payload),
+            node_id,
+            dt,
+            len(payload) / dt,
         )
     except Exception as e:
         logger.exception("firmware update error: %s", e)
@@ -452,7 +500,9 @@ async def firmware_upload(can_network: Network, node_id: int, payload, mqtt_clie
 
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
-    NODE_CMD = re.compile(f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$")
+    NODE_CMD = re.compile(
+        f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$"
+    )
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
         async for message in messages:
@@ -474,15 +524,17 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                     for entity in Entity.entities():
                         await entity.publish_config(mqtt_client)
                     await asyncio.sleep(1.0)
-                    await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
+                    await publish_can2mqtt_status(
+                        mqtt_client, mqtt_topic_prefix, "online"
+                    )
                     for entity in Entity.entities():
                         await entity.mqtt_initial_publish(mqtt_client)
                     for node_id in can_network.scanner.nodes:
-                            node = can_network.get(node_id)
-                            if node and node.is_supported:
-                                await mqtt_client.publish(
-                                    node.availability_topic, payload="online"
-                                )
+                        node = can_network.get(node_id)
+                        if node and node.is_supported:
+                            await mqtt_client.publish(
+                                node.availability_topic, payload="online"
+                            )
                 continue
 
             entity = CommandMixin.get_entity_by_cmd_topic(message.topic.value)
@@ -529,13 +581,21 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         )
                         with open(path, "rb") as f:
                             asyncio.create_task(
-                                firmware_upload(can_network, node_id, f.read(), mqtt_client, compress)
+                                firmware_upload(
+                                    can_network,
+                                    node_id,
+                                    f.read(),
+                                    mqtt_client,
+                                    compress,
+                                )
                             )
                     case (node_id, "firmware", arg):
                         flags = int(arg[1:])
                         compress = bool(flags & 1)
                         asyncio.create_task(
-                            firmware_upload(can_network, int(node_id, 16), message.payload, compress)
+                            firmware_upload(
+                                can_network, int(node_id, 16), message.payload, compress
+                            )
                         )
                     case (node_id, "write", arg):
                         arg = arg[1:]
@@ -555,14 +615,17 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                                 f"write to node {node_id} at index: {index:04x}:{start_subidx:02x}, data: {data}"
                             )
                             for subidx, value in enumerate(data, start_subidx):
-                                await can_network[node_id].sdo[index][subidx].aset_raw(
-                                    value
+                                await (
+                                    can_network[node_id]
+                                    .sdo[index][subidx]
+                                    .aset_raw(value)
                                 )
                         except SdoAbortedError as e:
                             logger.error("sdo error: %s", e)
                     case _:
                         if m:
                             logger.warning("unknown command: %s", m)
+
 
 def get_can2mqtt_status_topic(mqtt_topic_prefix):
     return f"{mqtt_topic_prefix}/can2mqtt/status"
@@ -582,7 +645,9 @@ class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
     def publish_version(self, node_id, ver):
         node = self.can_network.get(node_id)
         if node and node.update_entity:
-            asyncio.create_task(node.update_entity.publish_version(self.mqtt_client, ver))
+            asyncio.create_task(
+                node.update_entity.publish_version(self.mqtt_client, ver)
+            )
 
     def on_delete_firmware(self, path):
         logger.info("remove firmware: %s", path)
@@ -599,11 +664,11 @@ class FirmwareHandler(firmware_scanner.BaseFirmwareEventHandler):
 
 
 async def start(
-    mqtt_server='localhost',
+    mqtt_server="localhost",
     interface=None,
     channel=None,
     bitrate=125000,
-    mqtt_topic_prefix = 'homeassistant',
+    mqtt_topic_prefix="homeassistant",
     sdo_response_timeout=None,
     sdo_max_retries=None,
     firmware_dir=None,
@@ -631,11 +696,17 @@ async def start(
             else:
                 can_kwargs = {}
             can_network.connect(
-                loop=loop, interface=interface, channel=channel, bitrate=bitrate, **can_kwargs
+                loop=loop,
+                interface=interface,
+                channel=channel,
+                bitrate=bitrate,
+                **can_kwargs,
             )
 
             if firmware_dir:
-                firmware_scanner.init(loop, firmware_dir, FirmwareHandler(can_network, mqtt_client))
+                firmware_scanner.init(
+                    loop, firmware_dir, FirmwareHandler(can_network, mqtt_client)
+                )
 
             await asyncio.gather(
                 can_reader(
