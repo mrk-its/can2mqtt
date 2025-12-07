@@ -171,8 +171,9 @@ async def process_node(mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, re
 
     props = [
         ("node_id", node.id),
+        ("node_id", f"{node.id:02x}"),
         ("device name", node.device_name),
-        ("heartbeat time (ms)", node.prod_heartbeat_time)
+        ("heartbeat time (ms)", node.prod_heartbeat_time),
     ]
     if node.sw_version:
         props.append(("ver", node.sw_version))
@@ -372,6 +373,8 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                 node.ntm_state_entity = None
                 node.has_nmt_callback = False
 
+            just_registered = False
+
             if not node.is_initialized and node.nmt.state == "OPERATIONAL":
                 try:
                     logger.info("registering node: %02x", node.id)
@@ -387,13 +390,18 @@ async def can_reader(can_network, mqtt_client, mqtt_topic_prefix, sdo_response_t
                     < 2 * node.prod_heartbeat_time / 1000.0
                 )
                 availability = "online" if is_online else "offline"
-                if node.availability != availability:
-                    logger.info("node %s is %s", node_id, availability)
+                if node.availability != availability or just_registered:
+                    logger.info("node %02x is %s", node_id, availability)
                     node.availability = availability
                     await mqtt_client.publish(
                         node.availability_topic, payload=node.availability
                     )
-
+                    await publish_can2mqtt_status(
+                        mqtt_client, mqtt_topic_prefix, "online"
+                    )
+                if just_registered:
+                    await asyncio.sleep(0.1)
+                    continue
         await asyncio.sleep(1.0)
 
         if watchdog_timer.passed():
@@ -513,7 +521,12 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         node.update_entity.disable_upload = True
                         await node.update_entity.publish_config(mqtt_client)
                         rev, path = FIRMWARE_MAP[node_id]
-                        logger.info("firmware update, node_id: %s, rev: %s, path: %s", node_id, rev, path)
+                        logger.info(
+                            "firmware update, node_id: %02x, rev: %s, path: %s",
+                            node_id,
+                            rev,
+                            path,
+                        )
                         with open(path, "rb") as f:
                             asyncio.create_task(
                                 firmware_upload(can_network, node_id, f.read(), mqtt_client, compress)
