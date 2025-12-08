@@ -22,5 +22,5 @@ jobs:
         uses: home-assistant/builder@master
         with:
           args: |
-            --all \
+            --amd64 --aarch64 \
             --target .
