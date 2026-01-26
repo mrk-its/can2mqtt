@@ -418,8 +418,83 @@ class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
 
+    _availability_map = {}
+
+    def availability(self):
+        yield "availability", self.validate_state_default
+
+    @cached_property
+    def AVAILABILITY(self):
+        return list(self.availability())
+
     def states(self):
         yield "state_topic", float_to_str, datatypes.REAL32
+
+    def get_mqtt_config(self):
+        config = super(Sensor, self).get_mqtt_config()
+        assert len(self.AVAILABILITY) == len(self.state_map)
+        for (topic, *_), state_key in zip(self.AVAILABILITY, self.state_map):
+            config[topic].append({"topic": self.get_mqtt_state_availability_topic(state_key)})
+        return config
+
+    def get_mqtt_state_availability_topic(self, state_key):
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{state_key:08x}/availability"
+
+    async def publish_mqtt_state_availability(self, mqtt_client, state_key, value):
+        """Publishes the availability status of a specific state to MQTT.
+
+        This method determines the availability (online/offline) based on a
+        validator defined in the AVAILABILITY list. To reduce network traffic,
+        it only publishes to the broker if the availability status has changed
+        since the last check.
+
+        Args:
+            mqtt_client: The MQTT client instance used for publishing.
+            state_key (str): The key identifying the state in state_map.
+            value: The current raw value of the state to be validated.
+
+        Returns:
+            None
+
+        Note:
+            The availability status is stored in the internal `_availability_map`
+            to track state changes across calls.
+        """
+        state_availability_topic = self.get_mqtt_state_availability_topic(state_key)
+        index = self.state_map.index(state_key)
+        is_valid = self.AVAILABILITY[index][1](state_key, value)
+        if state_key not in self._availability_map or is_valid != self._availability_map[state_key]:
+            self._availability_map[state_key] = is_valid
+            payload = "online" if is_valid else "offline"
+            await mqtt_client.publish(state_availability_topic, payload=payload, retain=False)
+            logger.debug(
+                "MQTT publish topic: %s value: %s - ok", state_availability_topic, value
+            )
+
+    def validate_state_default(self, state_key, value):
+        """Validates the sensor state using the default implementation.
+
+        This method checks if the value, after being processed by
+        the type-specific parser defined in STATES[][1], results in
+        a non-empty string or a truthy value.
+
+        Child classes should define their own parsers if this default
+        behavior is not desired.
+
+        Args:
+            state_key: The key identifying the state to validate.
+            value: The raw value to be validated.
+
+        Returns:
+            True if the value is valid (non-empty), False otherwise.
+        """
+        index = self.state_map.index(state_key)
+        value = self.STATES[index][1](value)
+        return bool(value)
+
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
+        await self.publish_mqtt_state_availability(mqtt_client, state_key, value)
+        return await super(Sensor, self).publish_mqtt_state(mqtt_client, state_key, value)
 
     def canopen_metadata_properties(self):
         yield from super().canopen_metadata_properties()
@@ -427,6 +502,7 @@ class Sensor(StateMixin, Entity):
         yield 4, "state_class"
 
     def setup_object_dictionary(self, node: RemoteNode, base_index):
+        self._availability_map.clear()
         super().setup_object_dictionary(node, base_index)
         logger.info("sensor, setup od")
         node.object_dictionary[base_index].add_member(
