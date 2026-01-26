@@ -97,7 +97,7 @@ class StateMixin:
         return config
 
     def get_mqtt_state_topic(self, state_key):
-        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_{state_key:08x}"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{state_key:08x}/state"
 
     def get_mqtt_state(self, state_key, value):
         index = self.state_map.index(state_key)
@@ -156,7 +156,7 @@ class CommandMixin:
         return config
 
     def get_mqtt_command_topic(self, cmd_key):
-        return f"{self.mqtt_topic_prefix}/can_cmd_{self.node.id:03x}_{cmd_key:08x}"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{cmd_key:08x}/cmd"
 
     def get_can_cmd(self, topic, value):
         cmd_key = self._topic2cmdkey and self._topic2cmdkey.get(topic)
@@ -199,8 +199,14 @@ class Entity:
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.caps = caps
 
-        # TODO: add some canbus id part to allow for many can busses
-        self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
+        # TODO: Consider a more robust approach.
+        # Keep unique_id legacy-compatible when topic_prefix is "homeassistant".
+        # Only prepend topic_prefix if it differs from the default value.
+        if self.mqtt_topic_prefix == "homeassistant":
+            self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
+        else:
+            self.unique_id = f"{self.mqtt_topic_prefix}_can_{self.node.id:03x}_{self.entity_index:02x}"
+        self.config_path = f"{self.mqtt_topic_prefix}_can_{self.node.id:03x}/{self.entity_index:02x}"
         self.props = {}
         self._entities[self.unique_id] = self
 
@@ -233,7 +239,8 @@ class Entity:
         self.props[key] = value
 
     def get_mqtt_config_topic(self):
-        return f"{self.mqtt_topic_prefix}/{self.TYPE_NAME}/{self.unique_id}/config"
+        # TODO: make the configuration prefix configurable
+        return f"homeassistant/{self.TYPE_NAME}/{self.config_path}/config"
 
     def get_mqtt_config(self):
         cfg = {
@@ -329,14 +336,14 @@ class Update(Entity):
     flags = 0
 
     def get_state_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_state_{self.node.id:03x}/update"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/state"
 
     def get_json_attributes_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_json_attr_{self.node.id:03x}/update"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/attributes"
 
     def get_command_topic(self):
         return (
-            f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update/{self.flags}"
+            f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/cmd/firmware_file/{self.flags}"
         )
 
     def get_mqtt_config(self):
@@ -390,7 +397,7 @@ class NMTStateSensor(Entity):
     ]
 
     def get_state_topic(self):
-        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_nmt_state"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/nmt/state"
 
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
