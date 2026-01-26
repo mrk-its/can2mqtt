@@ -99,9 +99,14 @@ class StateMixin:
     def get_mqtt_state_topic(self, state_key):
         return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{state_key:08x}/state"
 
-    def get_mqtt_state(self, state_key, value):
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
+        state_topic = self.get_mqtt_state_topic(state_key)
         index = self.state_map.index(state_key)
-        return self.get_mqtt_state_topic(state_key), self.STATES[index][1](value)
+        value = self.STATES[index][1](value)
+        await mqtt_client.publish(state_topic, payload=value, retain=False)
+        logger.debug(
+            "MQTT publish topic: %s value: %s - ok", state_topic, value
+        )
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
@@ -119,8 +124,7 @@ class StateMixin:
             value = await self.node.sdo[state_key >> 16][
                 (state_key >> 8) & 0xFF
             ].aget_raw()
-            topic, mqtt_value = self.get_mqtt_state(state_key, value)
-            await mqtt_client.publish(topic, mqtt_value, retain=False)
+            await self.publish_mqtt_state(mqtt_client, state_key, value)
 
 
 class CommandMixin:
@@ -449,14 +453,14 @@ class MinMaxValueMixin:
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
 
-    def get_mqtt_state(self, state_key, value):
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
         if value == self.N_LEVELS:
             value2 = math.nan
         else:
             min_val = self.props.get("min_value", 0)
             max_val = self.props.get("max_value", self.N_LEVELS - 1)
             value2 = scale_from_wire(value, min_val, max_val, self.N_LEVELS)
-        return super().get_mqtt_state(state_key, value2)
+        return super().publish_mqtt_state(mqtt_client, state_key, value2)
 
     # TODO: add scaling for commands in get_can_cmd
 

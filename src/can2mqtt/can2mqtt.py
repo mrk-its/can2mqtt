@@ -125,11 +125,7 @@ def get_tptd_cb(mqtt_client):
             entity = StateMixin.get_entity_by_node_state_key(node_id, key)
             if entity:
                 try:
-                    state_topic, value = entity.get_mqtt_state(key, await v.aget_raw())
-                    await mqtt_client.publish(state_topic, payload=value, retain=False)
-                    logger.debug(
-                        "MQTT publish topic: %s value: %s - ok", state_topic, value
-                    )
+                    await entity.publish_mqtt_state(mqtt_client, key, await v.aget_raw())
                 except ValueError as e:
                     logger.error("%s", e)
             else:
