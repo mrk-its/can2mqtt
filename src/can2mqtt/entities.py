@@ -418,7 +418,9 @@ class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
 
-    _availability_map = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._availability_map = {}
 
     def availability(self):
         yield "availability", self.validate_state_default
