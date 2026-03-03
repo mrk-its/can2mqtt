@@ -97,11 +97,16 @@ class StateMixin:
         return config
 
     def get_mqtt_state_topic(self, state_key):
-        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_{state_key:08x}"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{state_key:08x}/state"
 
-    def get_mqtt_state(self, state_key, value):
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
+        state_topic = self.get_mqtt_state_topic(state_key)
         index = self.state_map.index(state_key)
-        return self.get_mqtt_state_topic(state_key), self.STATES[index][1](value)
+        value = self.STATES[index][1](value)
+        await mqtt_client.publish(state_topic, payload=value, retain=False)
+        logger.debug(
+            "MQTT publish topic: %s value: %s - ok", state_topic, value
+        )
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
@@ -119,8 +124,7 @@ class StateMixin:
             value = await self.node.sdo[state_key >> 16][
                 (state_key >> 8) & 0xFF
             ].aget_raw()
-            topic, mqtt_value = self.get_mqtt_state(state_key, value)
-            await mqtt_client.publish(topic, mqtt_value, retain=False)
+            await self.publish_mqtt_state(mqtt_client, state_key, value)
 
 
 class CommandMixin:
@@ -156,7 +160,7 @@ class CommandMixin:
         return config
 
     def get_mqtt_command_topic(self, cmd_key):
-        return f"{self.mqtt_topic_prefix}/can_cmd_{self.node.id:03x}_{cmd_key:08x}"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{cmd_key:08x}/cmd"
 
     def get_can_cmd(self, topic, value):
         cmd_key = self._topic2cmdkey and self._topic2cmdkey.get(topic)
@@ -199,8 +203,14 @@ class Entity:
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.caps = caps
 
-        # TODO: add some canbus id part to allow for many can busses
-        self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
+        # TODO: Consider a more robust approach.
+        # Keep unique_id legacy-compatible when topic_prefix is "homeassistant".
+        # Only prepend topic_prefix if it differs from the default value.
+        if self.mqtt_topic_prefix == "homeassistant":
+            self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
+        else:
+            self.unique_id = f"{self.mqtt_topic_prefix}_can_{self.node.id:03x}_{self.entity_index:02x}"
+        self.config_path = f"{self.mqtt_topic_prefix}_can_{self.node.id:03x}/{self.entity_index:02x}"
         self.props = {}
         self._entities[self.unique_id] = self
 
@@ -233,7 +243,8 @@ class Entity:
         self.props[key] = value
 
     def get_mqtt_config_topic(self):
-        return f"{self.mqtt_topic_prefix}/{self.TYPE_NAME}/{self.unique_id}/config"
+        # TODO: make the configuration prefix configurable
+        return f"homeassistant/{self.TYPE_NAME}/{self.config_path}/config"
 
     def get_mqtt_config(self):
         cfg = {
@@ -329,14 +340,14 @@ class Update(Entity):
     flags = 0
 
     def get_state_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_state_{self.node.id:03x}/update"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/state"
 
     def get_json_attributes_topic(self):
-        return f"{self.mqtt_topic_prefix}/node_json_attr_{self.node.id:03x}/update"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/attributes"
 
     def get_command_topic(self):
         return (
-            f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/update/{self.flags}"
+            f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/update/cmd/firmware_file/{self.flags}"
         )
 
     def get_mqtt_config(self):
@@ -390,7 +401,7 @@ class NMTStateSensor(Entity):
     ]
 
     def get_state_topic(self):
-        return f"{self.mqtt_topic_prefix}/can_state_{self.node.id:03x}_nmt_state"
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/nmt/state"
 
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
@@ -407,8 +418,85 @@ class Sensor(StateMixin, Entity):
     TYPE_ID = 1
     TYPE_NAME = "sensor"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._availability_map = {}
+
+    def availability(self):
+        yield "availability", self.validate_state_default
+
+    @cached_property
+    def AVAILABILITY(self):
+        return list(self.availability())
+
     def states(self):
         yield "state_topic", float_to_str, datatypes.REAL32
+
+    def get_mqtt_config(self):
+        config = super(Sensor, self).get_mqtt_config()
+        assert len(self.AVAILABILITY) == len(self.state_map)
+        for (topic, *_), state_key in zip(self.AVAILABILITY, self.state_map):
+            config[topic].append({"topic": self.get_mqtt_state_availability_topic(state_key)})
+        return config
+
+    def get_mqtt_state_availability_topic(self, state_key):
+        return f"{self.mqtt_topic_prefix}/can_{self.node.id:03x}/{state_key:08x}/availability"
+
+    async def publish_mqtt_state_availability(self, mqtt_client, state_key, value):
+        """Publishes the availability status of a specific state to MQTT.
+
+        This method determines the availability (online/offline) based on a
+        validator defined in the AVAILABILITY list. To reduce network traffic,
+        it only publishes to the broker if the availability status has changed
+        since the last check.
+
+        Args:
+            mqtt_client: The MQTT client instance used for publishing.
+            state_key (str): The key identifying the state in state_map.
+            value: The current raw value of the state to be validated.
+
+        Returns:
+            None
+
+        Note:
+            The availability status is stored in the internal `_availability_map`
+            to track state changes across calls.
+        """
+        state_availability_topic = self.get_mqtt_state_availability_topic(state_key)
+        index = self.state_map.index(state_key)
+        is_valid = self.AVAILABILITY[index][1](state_key, value)
+        if state_key not in self._availability_map or is_valid != self._availability_map[state_key]:
+            self._availability_map[state_key] = is_valid
+            payload = "online" if is_valid else "offline"
+            await mqtt_client.publish(state_availability_topic, payload=payload, retain=False)
+            logger.debug(
+                "MQTT publish topic: %s value: %s - ok", state_availability_topic, value
+            )
+
+    def validate_state_default(self, state_key, value):
+        """Validates the sensor state using the default implementation.
+
+        This method checks if the value, after being processed by
+        the type-specific parser defined in STATES[][1], results in
+        a non-empty string or a truthy value.
+
+        Child classes should define their own parsers if this default
+        behavior is not desired.
+
+        Args:
+            state_key: The key identifying the state to validate.
+            value: The raw value to be validated.
+
+        Returns:
+            True if the value is valid (non-empty), False otherwise.
+        """
+        index = self.state_map.index(state_key)
+        value = self.STATES[index][1](value)
+        return bool(value)
+
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
+        await self.publish_mqtt_state_availability(mqtt_client, state_key, value)
+        return await super(Sensor, self).publish_mqtt_state(mqtt_client, state_key, value)
 
     def canopen_metadata_properties(self):
         yield from super().canopen_metadata_properties()
@@ -416,6 +504,7 @@ class Sensor(StateMixin, Entity):
         yield 4, "state_class"
 
     def setup_object_dictionary(self, node: RemoteNode, base_index):
+        self._availability_map.clear()
         super().setup_object_dictionary(node, base_index)
         logger.info("sensor, setup od")
         node.object_dictionary[base_index].add_member(
@@ -442,14 +531,14 @@ class MinMaxValueMixin:
         v.data_type = datatypes.REAL32
         node.object_dictionary[base_index].add_member(v)
 
-    def get_mqtt_state(self, state_key, value):
+    async def publish_mqtt_state(self, mqtt_client, state_key, value):
         if value == self.N_LEVELS:
             value2 = math.nan
         else:
             min_val = self.props.get("min_value", 0)
             max_val = self.props.get("max_value", self.N_LEVELS - 1)
             value2 = scale_from_wire(value, min_val, max_val, self.N_LEVELS)
-        return super().get_mqtt_state(state_key, value2)
+        return super().publish_mqtt_state(mqtt_client, state_key, value2)
 
     # TODO: add scaling for commands in get_can_cmd
 
