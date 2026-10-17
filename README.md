@@ -78,6 +78,11 @@ can2mqtt and esphome-canopen together support firmware upgrades via CANBUS:
   ```
   .esphome/build/node-xyz/.pioenvs/node-xyz/firmware.bin
   ```
+  For Zephyr nodes (`platform: zephyr` with MCUboot) use the signed image instead:
+  ```
+  .esphome/build/node-xyz/.west_build/zephyr/zephyr/zephyr.signed.bin
+  ```
+  Don't copy the unsigned `zephyr.bin`; the node rejects it.
 
 * copy resulting `firmware.bin` to proper firmware directory monitored by can2mqtt.
   - if can2mqtt is installed as an addon of HA supervised, then can2mqtt is ran with `--firmware=/config` parameter, mapped to `/addon_configs/{SLUG}_can2mqtt/` shared directory. SLUG is 8-hexdigit value that can be found on addon's page. It is recommended to create subdirectory for each node and put `firmware.bin` file there, and copy file to path like: `/addon_configs/{SLUG}_can2mqtt/node-xyz/firmware.bin`
