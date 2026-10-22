@@ -125,11 +125,7 @@ def get_tptd_cb(mqtt_client):
             entity = StateMixin.get_entity_by_node_state_key(node_id, key)
             if entity:
                 try:
-                    state_topic, value = entity.get_mqtt_state(key, await v.aget_raw())
-                    await mqtt_client.publish(state_topic, payload=value, retain=False)
-                    logger.debug(
-                        "MQTT publish topic: %s value: %s - ok", state_topic, value
-                    )
+                    await entity.publish_mqtt_state(mqtt_client, key, await v.aget_raw())
                 except ValueError as e:
                     logger.error("%s", e)
             else:
@@ -501,7 +497,7 @@ async def firmware_upload(
 
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
     NODE_CMD = re.compile(
-        f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$"
+        f"{mqtt_topic_prefix}/can_([0-9a-f]{{3}})/(update|nmt|node)/cmd/(write|firmware_file|firmware_raw)(/.*)?$"
     )
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
@@ -561,11 +557,11 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
             else:
                 m = NODE_CMD.match(message.topic.value)
                 match m and m.groups():
-                    case (node_id, "nmt", _):
+                    case (node_id, "nmt", "write", _):
                         cmd = int(message.payload.decode("utf-8"))
                         logger.info("sent nmt command %d to node %s", cmd, node_id)
                         can_network.send_message(0, [cmd, int(node_id, 16)])
-                    case (node_id, "update", arg):
+                    case (node_id, "update", "firmware_file", arg):
                         flags = int(arg[1:])
                         compress = bool(flags & 1)
                         node_id = int(node_id, 16)
@@ -589,7 +585,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                                     compress,
                                 )
                             )
-                    case (node_id, "firmware", arg):
+                    case (node_id, "update", "firmware_raw", arg):
                         flags = int(arg[1:])
                         compress = bool(flags & 1)
                         asyncio.create_task(
@@ -597,7 +593,7 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                                 can_network, int(node_id, 16), message.payload, compress
                             )
                         )
-                    case (node_id, "write", arg):
+                    case (node_id, "node", "write", arg):
                         arg = arg[1:]
                         try:
                             node_id = int(node_id, 16)
