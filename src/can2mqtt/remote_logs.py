@@ -14,7 +14,7 @@ from canopen.sdo.exceptions import SdoAbortedError, SdoCommunicationError
 logger = logging.getLogger("can2mqtt.logs")
 
 LOGS_INDEX = 0x3100
-LOG_DATA, LOG_PENDING, LOG_LEVEL, LOG_DROPPED, LOG_DEFAULT_LEVEL, LOG_TIMEOUT = range(1, 7)
+LOG_DATA, LOG_PENDING, LOG_LEVEL, LOG_DROPPED, LOG_DEFAULT_LEVEL, LOG_TIMEOUT, LOG_BLOCK_SIZE = range(1, 8)
 
 # ESPHome level names, the index is the value of Log Level
 ESPHOME_LOG_LEVELS = [
@@ -42,6 +42,8 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 LINE_LEVEL_RE = re.compile(r"^\[(E|W|I|C|D|VV|V)\]")
 
 DEFAULT_TIMEOUT_MS = 30000
+# block size when the node doesn't advertise one: the 3 TX mailboxes of the STM32 CAN controllers
+DEFAULT_BLOCK_SIZE = 3
 BLOCK_UPLOAD_MIN_SIZE = 64  # smaller amounts use a segmented / expedited upload
 DRAIN_MAX_READS = 16
 DROPPED_CHECK_INTERVAL = 30.0
@@ -49,10 +51,17 @@ ERROR_BACKOFF = 5.0
 
 
 class LogUploadStream(BlockUploadStream):
-    # Zephyr CAN drivers have 3 TX mailboxes and no TX queue, and the node sends a whole block back to back.
-    # Must also be <= the node's sdo_block_transfer_size: canopen-stack caps a larger request silently and
-    # the initiate response can't tell us (the node validates sdo_block_transfer_size >= 3).
-    blksize = 3
+    """Block upload with the block size the node advertises in Log Block Size (0x3100:7).
+
+    The node sends a whole block back to back, so the block must fit its TX queue (without a software queue
+    only the controller's 3 TX mailboxes). It must also be <= the node's sdo_block_transfer_size:
+    canopen-stack caps a larger request silently and the initiate response can't tell us. canopen's
+    BlockUploadStream requests its class attribute blksize (64) in the initiate request and every ack.
+    """
+
+    def __init__(self, sdo_client, index, subindex, blksize, **kwargs):
+        self.blksize = blksize  # before super().__init__(), which sends the initiate request
+        super().__init__(sdo_client, index, subindex, **kwargs)
 
 
 def intervals(timeout_ms):
@@ -75,17 +84,24 @@ async def setup(node, mode):
         return
     default_level = await _read_u(node, LOG_DEFAULT_LEVEL, 0)
     timeout_ms = await _read_u(node, LOG_TIMEOUT, DEFAULT_TIMEOUT_MS)
+    block_size = await _read_u(node, LOG_BLOCK_SIZE, 0)
+    block_size_note = ""
+    if not block_size:
+        block_size = DEFAULT_BLOCK_SIZE
+        block_size_note = " (default, node has no 0x3100:7)"
     level = default_level if mode == "AUTO" else ESPHOME_LOG_LEVELS.index(mode)
     if not level:
         logger.info("node %02x: remote logs available, not subscribed (level NONE)", node.id)
         return
     logger.info(
-        "node %02x: subscribing to remote logs, level %s, node timeout %d ms",
+        "node %02x: subscribing to remote logs, level %s, node timeout %d ms, block size %d%s",
         node.id,
         ESPHOME_LOG_LEVELS[level],
         timeout_ms,
+        block_size,
+        block_size_note,
     )
-    node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms))
+    node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms, block_size))
 
 
 def stop(node):
@@ -102,12 +118,12 @@ async def _read_u(node, subindex, default):
         return default
 
 
-async def _read_data(node, size):
+async def _read_data(node, size, block_size):
     if size <= BLOCK_UPLOAD_MIN_SIZE:
         return await node.sdo.aupload(LOGS_INDEX, LOG_DATA)
 
     def read():
-        with LogUploadStream(node.sdo, LOGS_INDEX, LOG_DATA, request_crc_support=False) as stream:
+        with LogUploadStream(node.sdo, LOGS_INDEX, LOG_DATA, block_size, request_crc_support=False) as stream:
             return stream.readall()
 
     async with node.sdo.lock:  # the lock aupload() takes, one SDO transfer per node at a time
@@ -131,7 +147,7 @@ class LineDecoder:
             self.node_logger.log(LINE_LEVELS[m.group(1)] if m else logging.INFO, "%s", line)
 
 
-async def log_reader(node, level, timeout_ms):
+async def log_reader(node, level, timeout_ms, block_size=DEFAULT_BLOCK_SIZE):
     keepalive_interval, poll_interval = intervals(timeout_ms)
     loop = asyncio.get_running_loop()
     decoder = LineDecoder(node)
@@ -154,7 +170,7 @@ async def log_reader(node, level, timeout_ms):
                 pending = await _read_u(node, LOG_PENDING, 0)
                 if not pending:
                     break
-                decoder.feed(await _read_data(node, pending))
+                decoder.feed(await _read_data(node, pending, block_size))
                 await asyncio.sleep(0)
             if now >= next_dropped_check:
                 dropped = await _read_u(node, LOG_DROPPED, 0)

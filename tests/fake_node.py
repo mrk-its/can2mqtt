@@ -23,13 +23,14 @@ ABORT_TOS = 0x06070010
 class FakeLogs:
     """Node state of 0x3100 (logs.cpp)."""
 
-    def __init__(self, default_level=3, timeout_ms=30000):
+    def __init__(self, default_level=3, timeout_ms=30000, block_size=3):
         self.buf = bytearray()
         self.xfer = 0
         self.level = 0
         self.default_level = default_level
         self.timeout_ms = timeout_ms
         self.dropped = 0
+        self.block_size = block_size  # 0x3100:7, None: firmware without it
 
     def size(self):
         self.xfer = len(self.buf)
@@ -80,6 +81,8 @@ class FakeNode(threading.Thread):
 
     def value(self, sub):
         logs = self.logs
+        if sub == 7:
+            return None if logs.block_size is None else bytes([logs.block_size])
         return {
             2: lambda: struct.pack("<I", len(logs.buf)),
             3: lambda: bytes([logs.level]),
@@ -105,6 +108,9 @@ class FakeNode(threading.Thread):
         if cmd == 0x40:  # initiate upload
             if sub != 1:
                 v = self.value(sub)
+                if v is None:
+                    self.abort(sub, 0x06090011)  # subindex does not exist
+                    return
                 self.send([0x43 | ((4 - len(v)) << 2), *d[1:4], *v.ljust(4, b"\0")])
                 return
             n = self.logs.size()

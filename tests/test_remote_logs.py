@@ -85,11 +85,19 @@ async def wait_for(cond, timeout=10.0):
         await asyncio.sleep(0.02)
 
 
-def test_block_upload_with_lines_logged_during_transfer(node_log):
+@pytest.mark.parametrize(
+    "advertised, buf_seg, expected",
+    [
+        (8, 16, 8),  # node with a TX queue: tx_queue_size 16
+        (3, 63, 3),  # TX mailboxes only
+        (None, 63, remote_logs.DEFAULT_BLOCK_SIZE),  # firmware without 0x3100:7
+    ],
+)
+def test_block_upload_with_lines_logged_during_transfer(node_log, advertised, buf_seg, expected):
     async def run():
-        logs = FakeLogs(default_level=3)
+        logs = FakeLogs(default_level=3, block_size=advertised)
         # lines logged between blocks must not be eaten by the last block's Read(SegNum * 7)
-        bench = Bench(logs, on_block=lambda n: bench.add_line() if n in (1, 3, 5) else None)
+        bench = Bench(logs, buf_seg=buf_seg, on_block=lambda n: bench.add_line() if n in (1, 3, 5) else None)
         async with bench:
             for letter in "WIC" + "D" * 12:  # > 64 bytes: block upload
                 bench.add_line(letter)
@@ -99,8 +107,8 @@ def test_block_upload_with_lines_logged_during_transfer(node_log):
         assert node_log.lines == bench.expected
         assert bench.fake.level_writes[0] == 3  # AUTO: the node's default level
         assert "block" in bench.fake.log_data_uploads
-        # Zephyr CAN drivers have 3 TX mailboxes: initiate request and every ack ask for 3
-        assert set(bench.fake.requested_blksizes) == {remote_logs.LogUploadStream.blksize} == {3}
+        # the initiate request and every ack ask for the advertised block size
+        assert set(bench.fake.requested_blksizes) == {expected}
         assert not logs.buf
 
     asyncio.run(run())

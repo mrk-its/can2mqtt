@@ -176,7 +176,7 @@ ParameterName=Logs Max Index
 ObjectType=7
 DataType=5
 AccessType=R
-DefaultValue=6
+DefaultValue=7
 
 [3100sub1]
 ParameterName=Log Data
@@ -216,6 +216,13 @@ DefaultValue=0
 ParameterName=Log Timeout
 ObjectType=7
 DataType=7
+AccessType=R
+DefaultValue=0
+
+[3100sub7]
+ParameterName=Log Block Size
+ObjectType=7
+DataType=5
 AccessType=R
 DefaultValue=0
 
