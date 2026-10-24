@@ -22,7 +22,8 @@ can2mqtt = "main:main"
 
 [project.optional-dependencies]
 dev = [
-    "black"
+    "black",
+    "pytest",
 ]
 
 [tool.setuptools.package-data]
