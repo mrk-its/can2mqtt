@@ -1,3 +1,14 @@
+# v0.2.10 - 2026-10-25
+- remote ESPHome logs over CANopen (esphome-canopen `remote_logs:`, OD 0x3100),
+  forwarded as `node.<name>` loggers; new add-on option `remote_log_level`
+- remote logs: use the block size advertised by the node (0x3100:7)
+- remote logs: stop the log reader without cancelling its SDO transfer
+- docs: CAN OTA of Zephyr/MCUboot nodes (use the signed image)
+
+# v0.2.9 - 2025-12-08
+- re-publish availability topics after node refresh
+- show node ids in hex
+
 # v0.2.8 - 2025-07-06
 - rebuild with last canopen-asyncio (fixes update progress bar)
 
