@@ -3,7 +3,7 @@ description: "can2mqtt gateway - remote-logs"
 slug: "can2mqtt"
 init: false
 
-version: "0.2.10-b3"
+version: "0.2.10-b4"
 homeassistant: "2025.5.3"
 usb: true
 uart: true
