@@ -41,4 +41,5 @@ schema:
   mqtt_topic_prefix: str?
   sdo_response_timeout: float?
   firmware_dir: str?
+  remote_log_level: list(AUTO|NONE|ERROR|WARN|INFO|CONFIG|DEBUG|VERBOSE|VERY_VERBOSE)?
   extra_args: str?

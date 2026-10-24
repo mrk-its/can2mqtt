@@ -26,6 +26,7 @@ from canopen.objectdictionary import (
 from .utils import parse_mqtt_server_url
 from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
 from . import firmware_scanner
+from . import remote_logs
 
 from .firmware_scanner import cleanup_version
 
@@ -91,11 +92,13 @@ class WatchdogTimer:
 
 
 watchdog_timer = None
+remote_log_mode = "AUTO"  # --remote-log-level
 
 
 def reload_node(node):
     logger.info("reloading node %02x", node.id)
     node.is_initialized = False
+    remote_logs.stop(node)
     for _, map in node.tpdo.map.items():
         map.clear()
         map.callbacks.clear()  # probably above clear should do that??
@@ -207,6 +210,11 @@ async def process_node(
     await update_entity.publish_config(mqtt_client)
     logger.info("  entity: %r", update_entity)
     node.update_entity = update_entity
+
+    try:
+        await remote_logs.setup(node, remote_log_mode)
+    except SdoCommunicationError as e:
+        logger.warning("node %02x: remote logs setup failed: %r", node.id, e)
 
     if revision == 0:
         entity_types_index = 0x2000
@@ -407,6 +415,8 @@ async def can_reader(
                 node.device_name = None
                 node.ntm_state_entity = None
                 node.has_nmt_callback = False
+                node.log_task = None
+                node.firmware_upload_running = False
 
             just_registered = False
 
@@ -453,6 +463,7 @@ async def firmware_upload(
     if not node:
         logger.warning("node %d doesn't exist", node_id)
         return
+    node.firmware_upload_running = True  # pauses the remote log reader
     try:
         # TODO:
         # node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
@@ -494,6 +505,7 @@ async def firmware_upload(
     except Exception as e:
         logger.exception("firmware update error: %s", e)
     finally:
+        node.firmware_upload_running = False
         if mqtt_client:
             node.update_entity.disable_upload = False
             await node.update_entity.publish_config(mqtt_client)
@@ -674,10 +686,14 @@ async def start(
     firmware_dir=None,
     interface_opts_json=None,
     watchdog_timeout=60,
+    remote_log_level="AUTO",
     **kwargs,
 ):
-    global watchdog_timer
+    global watchdog_timer, remote_log_mode
     watchdog_timer = WatchdogTimer(watchdog_timeout)
+    remote_log_mode = remote_log_level.upper()
+    if remote_log_mode not in remote_logs.REMOTE_LOG_LEVEL_CHOICES:
+        raise ValueError(f"invalid remote_log_level: {remote_log_level}")
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(

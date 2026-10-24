@@ -167,3 +167,55 @@ ObjectType=7
 DataType=7
 AccessType=R
 
+[3100]
+ParameterName=Logs
+ObjectType=9
+
+[3100sub0]
+ParameterName=Logs Max Index
+ObjectType=7
+DataType=5
+AccessType=R
+DefaultValue=6
+
+[3100sub1]
+ParameterName=Log Data
+ObjectType=7
+DataType=0xf
+AccessType=R
+
+[3100sub2]
+ParameterName=Log Pending
+ObjectType=7
+DataType=7
+AccessType=R
+DefaultValue=0
+
+[3100sub3]
+ParameterName=Log Level
+ObjectType=7
+DataType=5
+AccessType=RW
+DefaultValue=0
+
+[3100sub4]
+ParameterName=Log Dropped
+ObjectType=7
+DataType=7
+AccessType=R
+DefaultValue=0
+
+[3100sub5]
+ParameterName=Log Default Level
+ObjectType=7
+DataType=5
+AccessType=R
+DefaultValue=0
+
+[3100sub6]
+ParameterName=Log Timeout
+ObjectType=7
+DataType=7
+AccessType=R
+DefaultValue=0
+

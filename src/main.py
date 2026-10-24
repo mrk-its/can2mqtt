@@ -29,6 +29,13 @@ def main():
     parser.add_argument("-r", "--sdo-max-retries", type=int)
     parser.add_argument("-f", "--firmware-dir")
     parser.add_argument("-w", "--watchdog-timeout", type=int)
+    parser.add_argument(
+        "--remote-log-level",
+        type=str.upper,
+        choices=can2mqtt.remote_logs.REMOTE_LOG_LEVEL_CHOICES,
+        help="ESPHome log level to subscribe nodes with remote_logs: to; AUTO (default) uses each node's "
+        "remote_logs: level, NONE disables remote logs",
+    )
     args = parser.parse_args()
 
     config_overrides = {
