@@ -1,9 +1,9 @@
 name: "can2mqtt"
-description: "can2mqtt gateway"
+description: "can2mqtt gateway - remote-logs"
 slug: "can2mqtt"
 init: false
 
-version: "0.2.9"
+version: "0.2.10-b2"
 homeassistant: "2025.5.3"
 usb: true
 uart: true
