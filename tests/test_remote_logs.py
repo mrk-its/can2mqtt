@@ -71,8 +71,7 @@ class Bench:
         return self
 
     async def __aexit__(self, *exc):
-        remote_logs.stop(self.node)
-        await asyncio.sleep(0)
+        await remote_logs.stop_and_wait(self.node)
         self.network.disconnect()
         self.fake.stop()
 
@@ -110,6 +109,50 @@ def test_block_upload_with_lines_logged_during_transfer(node_log, advertised, bu
         # the initiate request and every ack ask for the advertised block size
         assert set(bench.fake.requested_blksizes) == {expected}
         assert not logs.buf
+
+    asyncio.run(run())
+
+
+def test_reboot_during_block_upload_does_not_overlap_next_request(node_log):
+    """The node goes silent in the middle of a block upload (halted by a debugger, reset), comes back, and the
+    host reloads it: re-registration's first SDO request must wait for the reader's dead transfer. With
+    task.cancel() the SDO lock was released at once, the request went out while the upload thread was still
+    waiting for segments and the thread took its response ("Transfer aborted ... 0x05040000", "unexpected
+    messages in the queue")."""
+
+    async def run():
+        bench = Bench(FakeLogs(default_level=3, block_size=3), halt_at_block=2)
+        async with bench:
+            for _ in range(15):
+                bench.add_line()
+            await remote_logs.setup(bench.node, "AUTO")
+            await wait_for(bench.fake.halted.is_set)
+            bench.fake.reboot()
+            remote_logs.stop(bench.node)  # reload_node()
+            # re-registration
+            assert await bench.node.sdo.aupload(0x3100, 5) == bytes([3])
+            await wait_for(bench.node.log_task.done)
+            assert bench.node.log_task.exception() is None
+        frames = bench.fake.received
+        last_upload_frame = max(t for t, d in frames if d[0] == 0xA2)  # incl. the retransmit request
+        registration = max(t for t, d in frames if d[0] == 0x40 and d[3] == 5)
+        assert registration > last_upload_frame
+
+    asyncio.run(run())
+
+
+def test_stop_ends_the_reader_promptly():
+    async def run():
+        bench = Bench(FakeLogs())
+        async with bench:
+            await remote_logs.setup(bench.node, "AUTO")
+            await wait_for(lambda: bench.fake.level_writes)
+            task = bench.node.log_task
+            t0 = asyncio.get_running_loop().time()
+            await remote_logs.stop_and_wait(bench.node)
+            assert task.done() and not task.cancelled()
+            assert asyncio.get_running_loop().time() - t0 < 1.0  # not after the poll / backoff sleep
+            assert bench.node.log_task is None
 
     asyncio.run(run())
 

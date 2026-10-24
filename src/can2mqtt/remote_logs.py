@@ -48,6 +48,8 @@ BLOCK_UPLOAD_MIN_SIZE = 64  # smaller amounts use a segmented / expedited upload
 DRAIN_MAX_READS = 16
 DROPPED_CHECK_INTERVAL = 30.0
 ERROR_BACKOFF = 5.0
+# how long setup() waits for a stopping reader; longer than one SDO transfer with its timeouts and retries
+STOP_TIMEOUT = 15.0
 
 
 class LogUploadStream(BlockUploadStream):
@@ -74,7 +76,7 @@ def intervals(timeout_ms):
 
 async def setup(node, mode):
     """Probe the node for remote logs and (re)start its log reader. mode: AUTO, NONE or an ESPHome level."""
-    stop(node)
+    await stop_and_wait(node)
     if mode == "NONE":
         return
     try:
@@ -101,14 +103,33 @@ async def setup(node, mode):
         block_size,
         block_size_note,
     )
-    node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms, block_size))
+    node.log_stop = asyncio.Event()
+    node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms, block_size, node.log_stop))
 
 
 def stop(node):
+    """Ask the log reader to exit, after the SDO transfer it is in (e.g. on node reboot, from reload_node()).
+
+    Not task.cancel(): SDO transfers run in a worker thread (asyncio.to_thread) under node.sdo.lock, and a
+    cancel releases the lock at once while the thread keeps using the SDO channel; requests made meanwhile
+    (re-registration) would share the response queue with it.
+    """
+    stop_event = getattr(node, "log_stop", None)
+    if stop_event:
+        stop_event.set()
+
+
+async def stop_and_wait(node):
+    stop(node)
     task = getattr(node, "log_task", None)
-    if task:
-        task.cancel()
+    if task and not task.done():
+        try:
+            await asyncio.wait_for(asyncio.shield(task), STOP_TIMEOUT)
+        except asyncio.TimeoutError:
+            logger.warning("node %02x: remote log reader didn't stop, cancelling it", node.id)
+            task.cancel()
     node.log_task = None
+    node.log_stop = None
 
 
 async def _read_u(node, subindex, default):
@@ -147,19 +168,29 @@ class LineDecoder:
             self.node_logger.log(LINE_LEVELS[m.group(1)] if m else logging.INFO, "%s", line)
 
 
-async def log_reader(node, level, timeout_ms, block_size=DEFAULT_BLOCK_SIZE):
+async def _sleep(stop_event, seconds):
+    """Sleep, returns True as soon as the reader is asked to stop."""
+    try:
+        await asyncio.wait_for(stop_event.wait(), seconds)
+    except asyncio.TimeoutError:
+        pass
+    return stop_event.is_set()
+
+
+async def log_reader(node, level, timeout_ms, block_size, stop_event):
+    # stop_event is checked before every SDO transfer and ends every sleep, see stop()
     keepalive_interval, poll_interval = intervals(timeout_ms)
     loop = asyncio.get_running_loop()
     decoder = LineDecoder(node)
     next_keepalive = 0.0
     next_dropped_check = loop.time() + DROPPED_CHECK_INTERVAL
     last_dropped = None
-    while True:
+    while not stop_event.is_set():
         try:
             if getattr(node, "firmware_upload_running", False):
                 # the node may time out meanwhile; after OTA it reboots, after a failed OTA the keepalive
                 # below subscribes again
-                await asyncio.sleep(poll_interval)
+                await _sleep(stop_event, poll_interval)
                 continue
             now = loop.time()
             if now >= next_keepalive:
@@ -167,23 +198,26 @@ async def log_reader(node, level, timeout_ms, block_size=DEFAULT_BLOCK_SIZE):
                 await node.sdo.adownload(LOGS_INDEX, LOG_LEVEL, bytes([level]))
                 next_keepalive = now + keepalive_interval
             for _ in range(DRAIN_MAX_READS):
+                if stop_event.is_set():
+                    break
                 pending = await _read_u(node, LOG_PENDING, 0)
-                if not pending:
+                if not pending or stop_event.is_set():
                     break
                 decoder.feed(await _read_data(node, pending, block_size))
                 await asyncio.sleep(0)
-            if now >= next_dropped_check:
+            if now >= next_dropped_check and not stop_event.is_set():
                 dropped = await _read_u(node, LOG_DROPPED, 0)
                 if last_dropped is not None and dropped > last_dropped:
                     logger.warning("node %02x: %d log lines dropped", node.id, dropped - last_dropped)
                 last_dropped = dropped
                 next_dropped_check = now + DROPPED_CHECK_INTERVAL
-            await asyncio.sleep(poll_interval)
+            await _sleep(stop_event, poll_interval)
         except asyncio.CancelledError:
             raise
         except (SdoAbortedError, SdoCommunicationError) as e:
             logger.debug("node %02x: remote logs: %r", node.id, e)
-            await asyncio.sleep(ERROR_BACKOFF)
+            await _sleep(stop_event, ERROR_BACKOFF)
         except Exception:
             logger.exception("node %02x: remote logs", node.id)
-            await asyncio.sleep(ERROR_BACKOFF)
+            await _sleep(stop_event, ERROR_BACKOFF)
+    logger.debug("node %02x: remote log reader stopped", node.id)

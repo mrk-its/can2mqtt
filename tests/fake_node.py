@@ -13,6 +13,7 @@ do:
 
 import struct
 import threading
+import time
 
 import can
 
@@ -45,7 +46,7 @@ class FakeLogs:
 
 
 class FakeNode(threading.Thread):
-    def __init__(self, channel, node_id, logs, has_logs=True, buf_seg=16, on_block=None):
+    def __init__(self, channel, node_id, logs, has_logs=True, buf_seg=16, on_block=None, halt_at_block=None):
         super().__init__(daemon=True)
         self.bus = can.Bus(interface="virtual", channel=channel)
         self.node_id = node_id
@@ -53,14 +54,23 @@ class FakeNode(threading.Thread):
         self.has_logs = has_logs
         self.buf_seg = buf_seg
         self.on_block = on_block  # called with the block number before the block's Read
+        self.halt_at_block = halt_at_block  # stop answering instead of sending this block (CPU halted)
+        self.halted = threading.Event()
         self.stopped = threading.Event()
         # what the client did, for assertions
         self.requested_blksizes = []  # initiate request + every block ack
         self.log_data_uploads = []  # "expedited" / "segmented" / "block"
         self.level_writes = []
         self.blocks = 0
+        self.received = []  # (time.monotonic(), frame) of every request, also while halted
         self._seg = None
         self._blk = None
+
+    def reboot(self):
+        """The node comes back up: transfer state is gone, it answers again."""
+        self._seg = None
+        self._blk = None
+        self.halted.clear()
 
     def stop(self):
         self.stopped.set()
@@ -96,7 +106,9 @@ class FakeNode(threading.Thread):
             msg = self.bus.recv(timeout=0.05)
             if msg is None or msg.arbitration_id != 0x600 + self.node_id:
                 continue
-            self.handle(bytes(msg.data))
+            self.received.append((time.monotonic(), bytes(msg.data)))
+            if not self.halted.is_set():
+                self.handle(bytes(msg.data))
 
     def handle(self, d):
         cmd = d[0]
@@ -159,6 +171,9 @@ class FakeNode(threading.Thread):
 
     def send_block(self):
         blk = self._blk
+        if self.blocks == self.halt_at_block:
+            self.halted.set()
+            return
         if self.on_block:
             self.on_block(self.blocks)
         self.blocks += 1

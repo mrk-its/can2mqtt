@@ -416,6 +416,7 @@ async def can_reader(
                 node.ntm_state_entity = None
                 node.has_nmt_callback = False
                 node.log_task = None
+                node.log_stop = None
                 node.firmware_upload_running = False
 
             just_registered = False
