@@ -1,3 +1,9 @@
+# v0.2.11 - 2026-10-26
+- faster startup: nodes are registered in parallel (83s → 23s for 18 nodes); new option
+  `--max-parallel-registrations` (default 4, add-on: via `extra_args`)
+- fix nodes reported offline for up to a minute right after registration
+- developer documentation in `docs/`
+
 # v0.2.10 - 2026-10-25
 - remote ESPHome logs over CANopen (esphome-canopen `remote_logs:`, OD 0x3100),
   forwarded as `node.<name>` loggers; new add-on option `remote_log_level`
