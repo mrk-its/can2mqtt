@@ -70,11 +70,20 @@ In the Home Assistant add-on, set it with the `extra_args` option, e.g. `--max-p
 
 ## Results
 
-Expected with the default of 4 for the installation above: ~20s instead of ~83s (18 nodes at
-~4.3s, four at a time), plus the initial heartbeat wait.
+Measured on the installation above (add-on 0.2.11-b1, default of 4, 2026-10-26), process start →
+last `node XX is online`:
 
-<!-- TODO: replace with the measured startup time (process start → last "node XX is online"). -->
-Measured: *not yet measured on real hardware.*
+| | Before (serial) | After (4 in parallel) |
+|---|---|---|
+| total | 83s | **23s** |
+| wait for first registration | 3s | 1s |
+| registration per node | 2–6s, avg 4.3s | 3–7s, avg 4.6s |
+| nodes published offline right after registration | 6 | 0 |
+
+Single registrations get slightly slower with four running at once (more traffic on the bus), but
+they overlap. The USB-CAN adapter reports a rising `arb_lost` count during startup (105 → 168):
+lost arbitration is normal CAN behaviour under higher load (the frame is retried automatically),
+`bus_err` and `tx_failed` stayed constant.
 
 ## Tests
 
