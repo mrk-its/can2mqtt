@@ -1,3 +1,7 @@
+# v0.2.12 - 2026-10-26
+- faster startup: read the TPDO configuration during the pause before publishing initial
+  states instead of waiting idle
+
 # v0.2.11 - 2026-10-26
 - faster startup: nodes are registered in parallel (83s → 23s for 18 nodes); new option
   `--max-parallel-registrations` (default 4, add-on: via `extra_args`)
