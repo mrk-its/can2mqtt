@@ -69,10 +69,11 @@ The task calls `register_node()`:
    - reads the EntityTypes array (0x2000 for revision 0, 0x2001 for revision 1). For every entity:
      `EntityRegistry.create()`, adds the `states` / `cmds` records at `0x2000 + index * 16 + 1 / + 2`,
      reads the entity metadata from `0x2000 + index * 16`, publishes its discovery config;
-   - waits 1s (lets Home Assistant process the configs), publishes initial states, removes entities the
+   - reads the TPDO configuration (`tpdo.aread()`) while Home Assistant processes the configs;
+   - waits for the rest of `HA_DISCOVERY_DELAY` (1s since the last config; states aren't retained, so
+     HA must be subscribed to the state topics first), publishes initial states, removes entities the
      node no longer has;
-   - reads the TPDO configuration (`tpdo.aread()`) and attaches `get_tptd_cb()`, which turns received
-     PDOs into MQTT state messages;
+   - attaches `get_tptd_cb()` to the TPDO maps, which turns received PDOs into MQTT state messages;
    - publishes the firmware version available in the firmware directory.
 
 Failures (SDO timeout, unexpected exception) are logged and the node stays uninitialized, so the next

@@ -97,7 +97,9 @@ lost arbitration is normal CAN behaviour under higher load (the frame is retried
 
 ## Limits and follow-ups
 
-- Every startup still reads the full node description over SDO. Caching it (keyed by a firmware
-  config hash the node would expose in its object dictionary) would remove most of the SDO traffic.
-- The 1s pause in `process_node()` remains per node; it overlaps across parallel registrations.
+- Every startup still reads the full node description over SDO. Caching it, keyed by node id,
+  Identity and SoftwareVersion (it contains the build timestamp, so it changes with every rebuild),
+  would remove most of that traffic.
+- The 1s pause before initial states (`HA_DISCOVERY_DELAY`) now overlaps with reading the TPDO
+  configuration (1–2s), so it rarely adds time; not measured yet.
 - Nodes that send no heartbeat, PDO or EMCY are not discovered (passive `NodeScanner`).

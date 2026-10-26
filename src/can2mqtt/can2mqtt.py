@@ -49,6 +49,9 @@ FIRMWARE_MAP = defaultdict(lambda: (None, None))
 
 WATCHDOG_TIMEOUT_EXIT_CODE = 42
 
+# min. time between publishing a node's discovery configs and its initial states
+HA_DISCOVERY_DELAY = 1.0
+
 
 class QuitException(Exception):
     def __init__(self, descr, exit_code=127):
@@ -270,7 +273,19 @@ async def process_node(
 
         await entity.publish_config(mqtt_client)
 
-    await asyncio.sleep(1.0)
+    # states aren't retained: give Home Assistant time to process the configs and subscribe to
+    # the state topics before the initial states, read the TPDO configuration meanwhile
+    configs_published = time.monotonic()
+
+    for _, map in node.tpdo.map.items():
+        map.clear()
+        map.callbacks.clear()  # probably above clear should do that??
+
+    await node.tpdo.aread()
+
+    await asyncio.sleep(
+        max(0.0, HA_DISCOVERY_DELAY - (time.monotonic() - configs_published))
+    )
     for entity in Entity.entities():
         if entity.entity_index in (0, 255):
             continue  # skip NMT State entity
@@ -281,12 +296,7 @@ async def process_node(
                 await entity.remove_config(mqtt_client)
                 Entity.remove_entity(entity.unique_id)
 
-    for _, map in node.tpdo.map.items():
-        map.clear()
-        map.callbacks.clear()  # probably above clear should do that??
-
-    await node.tpdo.aread()
-
+    # PDOs are published only after the initial states
     on_tptd = get_tptd_cb(mqtt_client)
     for _, map in node.tpdo.map.items():
         map.add_callback(on_tptd)
