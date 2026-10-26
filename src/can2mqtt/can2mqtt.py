@@ -98,6 +98,9 @@ remote_log_mode = "AUTO"  # --remote-log-level
 def reload_node(node):
     logger.info("reloading node %02x", node.id)
     node.is_initialized = False
+    # a registration in progress isn't cancelled (see remote_logs.stop), registration_task()
+    # notices the reload and the node is registered again
+    node.reload_count += 1
     remote_logs.stop(node)
     for _, map in node.tpdo.map.items():
         map.clear()
@@ -168,9 +171,6 @@ async def process_node(
 
     try:
         node.prod_heartbeat_time = await node.sdo["ProducerHeartbeatTime"].aget_raw()
-        if not node.has_nmt_callback:
-            node.nmt.add_hearbeat_callback(get_heartbeat_cb(mqtt_client, node))
-            node.has_nmt_callback = True
     except SdoAbortedError as e:
         pass
 
@@ -328,6 +328,50 @@ async def register_node(
     node.is_initialized = True
 
 
+async def registration_task(
+    mqtt_client,
+    mqtt_topic_prefix: str,
+    can_network: Network,
+    node: RemoteNode,
+    semaphore: asyncio.Semaphore,
+):
+    try:
+        async with semaphore:
+            reload_count = node.reload_count
+            logger.info("registering node: %02x", node.id)
+            await register_node(mqtt_client, mqtt_topic_prefix, can_network, node)
+            if node.reload_count != reload_count:
+                logger.info(
+                    "node %02x rebooted during registration, registering again",
+                    node.id,
+                )
+                node.is_initialized = False
+            elif node.is_initialized and node.is_supported:
+                await publish_node_availability(
+                    mqtt_client, mqtt_topic_prefix, node, force=True
+                )
+    except SdoCommunicationError as e:
+        logger.warning("node: %02x: %r", node.id, e)
+    except Exception:
+        logger.exception("node: %02x: unknown exception", node.id)
+    finally:
+        node.register_task = None
+
+
+async def publish_node_availability(
+    mqtt_client, mqtt_topic_prefix: str, node: RemoteNode, force=False
+):
+    is_online = not node.prod_heartbeat_time or (
+        (time.time() - node.last_heartbeat_time) < 2 * node.prod_heartbeat_time / 1000.0
+    )
+    availability = "online" if is_online else "offline"
+    if node.availability != availability or force:
+        logger.info("node %02x is %s", node.id, availability)
+        node.availability = availability
+        await mqtt_client.publish(node.availability_topic, payload=node.availability)
+        await publish_can2mqtt_status(mqtt_client, mqtt_topic_prefix, "online")
+
+
 def setup_common_od(od):
     for tpdo_index in range(8):
         tpdo_params = ODRecord(f"TPDO{tpdo_index}_params", 0x1800 + tpdo_index)
@@ -381,6 +425,7 @@ async def can_reader(
     can_network,
     mqtt_client,
     mqtt_topic_prefix,
+    semaphore,
     sdo_response_timeout=None,
     sdo_max_retries=None,
 ):
@@ -414,43 +459,28 @@ async def can_reader(
                 node.hw_version = None
                 node.device_name = None
                 node.ntm_state_entity = None
-                node.has_nmt_callback = False
                 node.log_task = None
                 node.log_stop = None
                 node.firmware_upload_running = False
+                node.register_task = None  # running registration_task()
+                node.reload_count = 0  # bumped by reload_node()
 
-            just_registered = False
+                # tracks heartbeats (availability, reload on reboot) before the node is registered
+                node.nmt.add_hearbeat_callback(get_heartbeat_cb(mqtt_client, node))
 
-            if not node.is_initialized and node.nmt.state == "OPERATIONAL":
-                try:
-                    logger.info("registering node: %02x", node.id)
-                    await register_node(
-                        mqtt_client, mqtt_topic_prefix, can_network, node
+            if (
+                not node.is_initialized
+                and node.register_task is None
+                and node.nmt.state == "OPERATIONAL"
+            ):
+                node.register_task = asyncio.create_task(
+                    registration_task(
+                        mqtt_client, mqtt_topic_prefix, can_network, node, semaphore
                     )
-                    just_registered = True
-                except SdoCommunicationError as e:
-                    logger.warning("node: %02x: %r", node.id, e)
-                except:
-                    logger.exception("node: %02x: unknown exception", node.id)
-
-            if node.is_supported:
-                is_online = not node.prod_heartbeat_time or (
-                    (time.time() - node.last_heartbeat_time)
-                    < 2 * node.prod_heartbeat_time / 1000.0
                 )
-                availability = "online" if is_online else "offline"
-                if node.availability != availability or just_registered:
-                    logger.info("node %02x is %s", node_id, availability)
-                    node.availability = availability
-                    await mqtt_client.publish(
-                        node.availability_topic, payload=node.availability
-                    )
-                    await publish_can2mqtt_status(
-                        mqtt_client, mqtt_topic_prefix, "online"
-                    )
-                if just_registered:
-                    await asyncio.sleep(0.1)
-                    continue
+
+            if node.is_supported and node.register_task is None:
+                await publish_node_availability(mqtt_client, mqtt_topic_prefix, node)
         await asyncio.sleep(1.0)
 
         if watchdog_timer.passed():
@@ -688,6 +718,7 @@ async def start(
     interface_opts_json=None,
     watchdog_timeout=60,
     remote_log_level="AUTO",
+    max_parallel_registrations=4,
     **kwargs,
 ):
     global watchdog_timer, remote_log_mode
@@ -695,6 +726,10 @@ async def start(
     remote_log_mode = remote_log_level.upper()
     if remote_log_mode not in remote_logs.REMOTE_LOG_LEVEL_CHOICES:
         raise ValueError(f"invalid remote_log_level: {remote_log_level}")
+    if max_parallel_registrations < 1:
+        raise ValueError(
+            f"invalid max_parallel_registrations: {max_parallel_registrations}"
+        )
 
     mqtt_server, extra_auth = parse_mqtt_server_url(mqtt_server)
     will = aiomqtt.Will(
@@ -730,6 +765,7 @@ async def start(
                     can_network,
                     mqtt_client,
                     mqtt_topic_prefix=mqtt_topic_prefix,
+                    semaphore=asyncio.Semaphore(max_parallel_registrations),
                     sdo_response_timeout=sdo_response_timeout,
                     sdo_max_retries=sdo_max_retries,
                 ),

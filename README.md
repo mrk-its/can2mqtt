@@ -94,6 +94,10 @@ can2mqtt and esphome-canopen together support firmware upgrades via CANBUS:
   and new update should be visible in HA
 * update may be installed via standard HA update interface, the update progress / final status should be visible in `can2mqtt` logs. When update is finished node will be restarted and should be re-registered in `can2mqtt`.
 
+# Development
+
+Developer documentation (architecture, design notes) is in [docs/](docs/README.md).
+
 # Support
 
 * [Discord Server](https://discord.gg/VXjUSnUWsd)

@@ -30,6 +30,12 @@ def main():
     parser.add_argument("-f", "--firmware-dir")
     parser.add_argument("-w", "--watchdog-timeout", type=int)
     parser.add_argument(
+        "-p",
+        "--max-parallel-registrations",
+        type=int,
+        help="how many nodes are registered at the same time (default: 4)",
+    )
+    parser.add_argument(
         "--remote-log-level",
         type=str.upper,
         choices=can2mqtt.remote_logs.REMOTE_LOG_LEVEL_CHOICES,
