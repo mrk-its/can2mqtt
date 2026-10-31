@@ -3,7 +3,7 @@ description: "can2mqtt gateway - dev"
 slug: "can2mqtt"
 init: false
 
-version: "0.2.13-b1"
+version: "0.2.13-b2"
 homeassistant: "2025.5.3"
 usb: true
 uart: true
