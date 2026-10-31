@@ -29,14 +29,16 @@ ESPHOME_LOG_LEVELS = [
 ]
 REMOTE_LOG_LEVEL_CHOICES = ["AUTO", *ESPHOME_LOG_LEVELS]
 
+# Python level of a node's log line. The node already filters by the subscribed level (--remote-log-level), so
+# lines below INFO are logged at INFO: they show without can2mqtt's own --log-level DEBUG.
 LINE_LEVELS = {
     "E": logging.ERROR,
     "W": logging.WARNING,
     "I": logging.INFO,
     "C": logging.INFO,
-    "D": logging.DEBUG,
-    "V": logging.DEBUG,
-    "VV": logging.DEBUG,
+    "D": logging.INFO,
+    "V": logging.INFO,
+    "VV": logging.INFO,
 }
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 LINE_LEVEL_RE = re.compile(r"^\[(E|W|I|C|D|VV|V)\]")
