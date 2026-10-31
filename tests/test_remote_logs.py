@@ -113,6 +113,25 @@ def test_block_upload_with_lines_logged_during_transfer(node_log, advertised, bu
     asyncio.run(run())
 
 
+def test_block_upload_from_a_server_with_crc_support(node_log):
+    """CANopenNode (the hub's SDO server) always indicates CRC support in the block upload initiate response and
+    sends CRC 0 unless the client requested CRC, which canopen then checks (0x05040004 aborts lost the lines): we
+    request CRC, the server computes it."""
+
+    async def run():
+        logs = FakeLogs(default_level=3, block_size=16)
+        bench = Bench(logs, buf_seg=127, server_crc=True)
+        async with bench:
+            for letter in "WIC" + "D" * 12:  # > 64 bytes: block upload
+                bench.add_line(letter)
+            await remote_logs.setup(bench.node, "AUTO")
+            await wait_for(lambda: len(node_log.lines) >= len(bench.expected))
+        assert node_log.lines == bench.expected
+        assert "block" in bench.fake.log_data_uploads
+
+    asyncio.run(run())
+
+
 def test_reboot_during_block_upload_does_not_overlap_next_request(node_log):
     """The node goes silent in the middle of a block upload (halted by a debugger, reset), comes back, and the
     host reloads it: re-registration's first SDO request must wait for the reader's dead transfer. With

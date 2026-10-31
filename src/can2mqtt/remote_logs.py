@@ -146,7 +146,9 @@ async def _read_data(node, size, block_size):
         return await node.sdo.aupload(LOGS_INDEX, LOG_DATA)
 
     def read():
-        with LogUploadStream(node.sdo, LOGS_INDEX, LOG_DATA, block_size, request_crc_support=False) as stream:
+        # with CRC: CANopenNode (the hub) always says it supports CRC and canopen then checks it, so without the
+        # request the server's CRC 0 aborts the transfer (0x05040004); canopen-stack nodes ignore the request
+        with LogUploadStream(node.sdo, LOGS_INDEX, LOG_DATA, block_size, request_crc_support=True) as stream:
             return stream.readall()
 
     async with node.sdo.lock:  # the lock aupload() takes, one SDO transfer per node at a time

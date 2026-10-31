@@ -9,6 +9,9 @@ do:
 - every block calls Read(SegNum * 7), the last one too (COSdoUploadBlock), and Read never consumes more
   than the snapshot;
 - an upload of an empty buffer aborts (COSdoGetSize: size 0).
+canopen-stack has no CRC: it accepts a client's CRC request (0xA4) and answers without the server CRC bit (0xC2).
+With server_crc the fake answers like CANopenNode (the hub's SDO server): the server CRC bit always set (0xC6), the
+CRC-16 in the end frame only if the client requested it, 0 otherwise.
 """
 
 import struct
@@ -19,6 +22,16 @@ import can
 
 LOGS_INDEX = 0x3100
 ABORT_TOS = 0x06070010
+
+
+def crc16_ccitt(data, crc=0):
+    """The SDO block transfer CRC (CiA 301: CRC-16/XMODEM, polynomial 0x1021, initial value 0)."""
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else crc << 1
+            crc &= 0xFFFF
+    return crc
 
 
 class FakeLogs:
@@ -46,7 +59,9 @@ class FakeLogs:
 
 
 class FakeNode(threading.Thread):
-    def __init__(self, channel, node_id, logs, has_logs=True, buf_seg=16, on_block=None, halt_at_block=None):
+    def __init__(
+        self, channel, node_id, logs, has_logs=True, buf_seg=16, on_block=None, halt_at_block=None, server_crc=False
+    ):
         super().__init__(daemon=True)
         self.bus = can.Bus(interface="virtual", channel=channel)
         self.node_id = node_id
@@ -55,6 +70,7 @@ class FakeNode(threading.Thread):
         self.buf_seg = buf_seg
         self.on_block = on_block  # called with the block number before the block's Read
         self.halt_at_block = halt_at_block  # stop answering instead of sending this block (CPU halted)
+        self.server_crc = server_crc
         self.halted = threading.Event()
         self.stopped = threading.Event()
         # what the client did, for assertions
@@ -154,7 +170,8 @@ class FakeNode(threading.Thread):
                 return
             self.log_data_uploads.append("block")
             self._blk = {"len": n, "segnum": min(d[4], self.buf_seg)}
-            self.send([0xC2, *d[1:4], *struct.pack("<I", n)])
+            self._blk["crc"] = 0 if self.server_crc and cmd == 0xA4 else None
+            self.send([0xC6 if self.server_crc else 0xC2, *d[1:4], *struct.pack("<I", n)])
         elif cmd == 0xA3 and self._blk:  # start upload
             self.send_block()
         elif cmd == 0xA2 and self._blk:  # block ack
@@ -162,7 +179,8 @@ class FakeNode(threading.Thread):
             self.requested_blksizes.append(blksize)
             assert ackseq == self._blk["sent"], (ackseq, self._blk["sent"])
             if self._blk["len"] == 0:
-                self.send([0xC1 | ((7 - self._blk["last_valid"]) << 2)])
+                crc = self._blk["crc"] or 0
+                self.send([0xC1 | ((7 - self._blk["last_valid"]) << 2), *struct.pack("<H", crc)])
             else:
                 self._blk["segnum"] = min(blksize, self.buf_seg)
                 self.send_block()
@@ -186,5 +204,7 @@ class FakeNode(threading.Thread):
             self.send([seq | (0x80 if last else 0), *data[pos : pos + k]])
             pos += k
             blk["sent"], blk["last_valid"] = seq, k
+            if blk.get("crc") is not None:
+                blk["crc"] = crc16_ccitt(data[pos - k : pos], blk["crc"])
             if last:
                 break
