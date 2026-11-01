@@ -184,6 +184,8 @@ class Entity:
     TYPE_ID = None
     VERSION = 0
     PROPS = {}
+    # created by can2mqtt for every node (not listed in the node's EntityTypes)
+    BUILTIN = False
 
     @cached_property
     def METADATA_PROPERTIES(self):
@@ -199,10 +201,13 @@ class Entity:
         self.mqtt_topic_prefix = mqtt_topic_prefix
         self.caps = caps
 
-        # TODO: add some canbus id part to allow for many can busses
-        self.unique_id = f"can_{self.node.id:03x}_{self.entity_index:02x}"
+        self.unique_id = self.get_unique_id()
         self.props = {}
         self._entities[self.unique_id] = self
+
+    def get_unique_id(self):
+        # TODO: add some canbus id part to allow for many can busses
+        return f"can_{self.node.id:03x}_{self.entity_index:02x}"
 
     @classmethod
     def entities(cls):
@@ -321,6 +326,7 @@ class EntityRegistry:
 class Update(Entity):
     TYPE_ID = 255
     TYPE_NAME = "update"
+    BUILTIN = True
     STATES = [
         ("state_topic", str, str),
     ]
@@ -385,6 +391,7 @@ class Update(Entity):
 class NMTStateSensor(Entity):
     TYPE_ID = 0
     TYPE_NAME = "sensor"
+    BUILTIN = True
     STATES = [
         ("state_topic", str, datatypes.UNSIGNED8),
     ]
@@ -396,6 +403,50 @@ class NMTStateSensor(Entity):
         config = super().get_mqtt_config()
         config["state_topic"] = self.get_state_topic()
         return config
+
+
+# key: (name, NMT command, device_class, enabled_by_default)
+NMT_BUTTONS = {
+    "restart": ("Restart", 0x81, "restart", True),
+    "start": ("NMT Start", 0x01, None, False),
+    "stop": ("NMT Stop", 0x02, None, False),
+    "pre_operational": ("NMT Pre-operational", 0x80, None, False),
+}
+
+
+class NMTButton(Entity):
+    """Sends an NMT command to the node (node_cmd_XXX/nmt topic) when pressed."""
+
+    TYPE_NAME = "button"
+    BUILTIN = True
+
+    def __init__(self, node, key, mqtt_topic_prefix):
+        self.key = key
+        self.name, self.command, self.device_class, self.enabled_by_default = (
+            NMT_BUTTONS[key]
+        )
+        super().__init__(node, None, mqtt_topic_prefix, 0)
+
+    def get_unique_id(self):
+        return f"can_{self.node.id:03x}_nmt_{self.key}"
+
+    def get_command_topic(self):
+        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/nmt"
+
+    def get_mqtt_config(self):
+        config = super().get_mqtt_config()
+        config["name"] = self.name
+        config["command_topic"] = self.get_command_topic()
+        config["payload_press"] = str(self.command)
+        config["entity_category"] = "config"
+        if self.device_class:
+            config["device_class"] = self.device_class
+        if not self.enabled_by_default:
+            config["enabled_by_default"] = False
+        return config
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(node_id=0x{self.node.id:02x}, key={self.key})"
 
 
 def float_to_str(value):

@@ -64,7 +64,7 @@ The task calls `register_node()`:
 2. `process_node()`:
    - reads SoftwareVersion, DeviceName, HardwareVersion, ProducerHeartbeatTime;
    - publishes discovery config for the NMT state entity (index 0) and the firmware update entity
-     (index 255, upload enabled if the node has `Firmware Max Index`);
+     (index 255, upload enabled if the node has `Firmware Max Index`) and the NMT buttons (see below);
    - sets up remote logs (`remote_logs.setup()`);
    - reads the EntityTypes array (0x2000 for revision 0, 0x2001 for revision 1). For every entity:
      `EntityRegistry.create()`, adds the `states` / `cmds` records at `0x2000 + index * 16 + 1 / + 2`,
@@ -105,7 +105,7 @@ supervisor / add-on).
 |---|---|
 | `<prefix>/status` = `online` | Home Assistant restarted: republish all discovery configs, states, availability |
 | `<prefix>/can_cmd_XXX_KKKKKKKK` | entity command, written to the node with SDO (`CommandMixin`) |
-| `<prefix>/node_cmd_XXX/nmt` | raw NMT command (payload: command number) |
+| `<prefix>/node_cmd_XXX/nmt` | NMT command, payload: number (`129`, `0x81`) or name (`RESET`, `pre_operational`, see `canopen.nmt.NMT_COMMANDS`); `XXX` = `000`: all nodes |
 | `<prefix>/node_cmd_XXX/update/<flags>` | install firmware from the firmware directory (update entity) |
 | `<prefix>/node_cmd_XXX/firmware/<flags>` | upload firmware sent in the payload |
 | `<prefix>/node_cmd_XXX/write/<index>[:<subindex>]` | raw SDO writes (hex values) |
@@ -119,6 +119,31 @@ Published by can2mqtt:
 | `<prefix>/node_state_XXX/update` | NMT state entity |
 | `<prefix>/can_XXX/availability` | node availability |
 | `<prefix>/can2mqtt/status` | can2mqtt availability (last will `offline`) |
+
+## NMT buttons
+
+Built-in entities (`BUILTIN = True`: NMT state, update, NMT buttons) are created by can2mqtt for
+every node; they aren't in the node's EntityTypes, so the stale entity cleanup in `process_node()`
+skips them.
+
+`process_node()` publishes one `NMTButton` (`entities.NMT_BUTTONS`) per command, unique id
+`can_XXX_nmt_<key>`, `entity_category: config`, `command_topic` = `<prefix>/node_cmd_XXX/nmt`,
+`payload_press` = the command number:
+
+| Button | Command | Enabled by default |
+|---|---|---|
+| Restart (`device_class: restart`) | `0x81` reset node | yes |
+| NMT Start | `0x01` | no |
+| NMT Stop | `0x02` | no |
+| NMT Pre-operational | `0x80` | no |
+
+esphome-canopen handles reset node with `App.safe_reboot()` (the same as ESPHome's `restart`
+button); reset communication (`0x82`) isn't implemented there, so there is no button for it.
+
+`send_nmt_command()` uses `node.nmt.send_command()` for a known node, which also sets the tracked
+NMT state (`INITIALISING` after a reset) until the next heartbeat. After a restart the node sends a
+boot-up heartbeat: `reload_node()`, and the node is registered again once it is `OPERATIONAL`. An NMT
+command during a firmware upload is sent anyway (a restart aborts the upload), with a warning.
 
 ## SDO concurrency rules
 

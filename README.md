@@ -94,6 +94,16 @@ can2mqtt and esphome-canopen together support firmware upgrades via CANBUS:
   and new update should be visible in HA
 * update may be installed via standard HA update interface, the update progress / final status should be visible in `can2mqtt` logs. When update is finished node will be restarted and should be re-registered in `can2mqtt`.
 
+# Restarting nodes
+
+Every node gets a **Restart** button (device configuration section in HA): it sends the CANopen NMT
+"reset node" command, and the node reboots and is registered again. **NMT Start**, **NMT Stop** and
+**NMT Pre-operational** buttons are created too, but disabled by default; enable them in HA if needed.
+
+NMT commands can also be sent directly: publish the command number or name to
+`<prefix>/node_cmd_XXX/nmt` (`XXX` = node id in hex, `000` = all nodes), e.g.
+`mosquitto_pub -t homeassistant/node_cmd_012/nmt -m RESET`.
+
 # Development
 
 Developer documentation (architecture, design notes) is in [docs/](docs/README.md).

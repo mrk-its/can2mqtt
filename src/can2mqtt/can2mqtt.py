@@ -13,6 +13,7 @@ import canopen
 
 from canopen.network import Network
 from canopen.node import RemoteNode
+from canopen.nmt import NMT_COMMANDS
 
 from canopen.sdo.exceptions import SdoAbortedError, SdoCommunicationError
 from canopen.objectdictionary import (
@@ -24,7 +25,14 @@ from canopen.objectdictionary import (
 )
 
 from .utils import parse_mqtt_server_url
-from .entities import EntityRegistry, StateMixin, CommandMixin, Entity
+from .entities import (
+    EntityRegistry,
+    StateMixin,
+    CommandMixin,
+    Entity,
+    NMTButton,
+    NMT_BUTTONS,
+)
 from . import firmware_scanner
 from . import remote_logs
 
@@ -214,6 +222,11 @@ async def process_node(
     logger.info("  entity: %r", update_entity)
     node.update_entity = update_entity
 
+    for key in NMT_BUTTONS:
+        button = NMTButton(node, key, mqtt_topic_prefix)
+        await button.publish_config(mqtt_client)
+        logger.info("  entity: %r", button)
+
     try:
         await remote_logs.setup(node, remote_log_mode)
     except SdoCommunicationError as e:
@@ -287,8 +300,8 @@ async def process_node(
         max(0.0, HA_DISCOVERY_DELAY - (time.monotonic() - configs_published))
     )
     for entity in Entity.entities():
-        if entity.entity_index in (0, 255):
-            continue  # skip NMT State entity
+        if entity.BUILTIN:
+            continue  # NMT State, Update, NMT buttons: not listed in EntityTypes
         if entity.node.id == node.id:
             if entity.unique_id in node_entity_ids:
                 await entity.mqtt_initial_publish(mqtt_client)
@@ -552,6 +565,35 @@ async def firmware_upload(
             await node.update_entity.publish_config(mqtt_client)
 
 
+def parse_nmt_command(payload: bytes) -> int:
+    """NMT command from an MQTT payload: a number ("129", "0x81") or a name ("RESET",
+    "pre_operational", see canopen.nmt.NMT_COMMANDS)."""
+    value = payload.decode("utf-8").strip()
+    name = value.upper()
+    for key in (name, name.replace("_", " "), name.replace("_", "-")):
+        if key in NMT_COMMANDS:
+            return NMT_COMMANDS[key]
+    cmd = int(value, 0)
+    if not 0 <= cmd <= 0xFF:
+        raise ValueError(f"nmt command out of range: {cmd}")
+    return cmd
+
+
+def send_nmt_command(can_network, node_id: int, cmd: int):
+    """Send an NMT command, node_id 0 = all nodes."""
+    node = can_network.get(node_id) if node_id else None
+    if node and getattr(node, "firmware_upload_running", False):
+        logger.warning(
+            "node %02x: nmt command 0x%02x during firmware upload", node_id, cmd
+        )
+    logger.info("sending nmt command 0x%02x to node %02x", cmd, node_id)
+    if node:
+        # also updates node.nmt.state (e.g. INITIALISING after a reset) until the next heartbeat
+        node.nmt.send_command(cmd)
+    else:
+        can_network.send_message(0, [cmd, node_id])
+
+
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
     NODE_CMD = re.compile(
         f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$"
@@ -615,9 +657,12 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                 m = NODE_CMD.match(message.topic.value)
                 match m and m.groups():
                     case (node_id, "nmt", _):
-                        cmd = int(message.payload.decode("utf-8"))
-                        logger.info("sent nmt command %d to node %s", cmd, node_id)
-                        can_network.send_message(0, [cmd, int(node_id, 16)])
+                        try:
+                            cmd = parse_nmt_command(message.payload)
+                        except ValueError:
+                            logger.warning("invalid nmt command: %r", message.payload)
+                            continue
+                        send_nmt_command(can_network, int(node_id, 16), cmd)
                     case (node_id, "update", arg):
                         flags = int(arg[1:])
                         compress = bool(flags & 1)
