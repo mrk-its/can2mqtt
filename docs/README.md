@@ -24,12 +24,66 @@ This folder is for people working on can2mqtt itself.
 CANopen is handled by [canopen-asyncio](https://github.com/mrk-its/canopen-asyncio), a fork of
 python-canopen with `async` SDO / PDO methods (`aget_raw()`, `aupload()`, `tpdo.aread()`, …).
 
-## Running tests
+## Development setup
+
+can2mqtt is developed in a local virtualenv in `venv/` (ignored by git).
+
+### Create the venv
+
+Use a Python interpreter that doesn't change under the venv. A venv links to the interpreter it was
+created with and its packages live in `venv/lib/pythonX.Y/`: if it's created from the system
+`/usr/bin/python` and a distribution upgrade bumps it (e.g. 3.13 → 3.14 on Arch), `venv/bin/python`
+starts the new version, which doesn't see the installed packages (`No module named 'can'`).
+A [pyenv](https://github.com/pyenv/pyenv) (or uv / mise) managed interpreter stays where it is:
 
 ```sh
-python -m venv venv
+pyenv install 3.13          # once
+~/.pyenv/versions/3.13.13/bin/python -m venv venv
+./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -e '.[dev]'
+```
+
+`-e` (editable) installs can2mqtt from `src/`, so code changes take effect without reinstalling;
+`[dev]` adds pytest and black. The dependencies come from git (canopen-asyncio,
+esphome-canbus-usb-serial), so `git` and network access are needed.
+
+Check it: `./venv/bin/python --version` and `./venv/bin/can2mqtt --help`.
+
+### Recreate the venv
+
+When the interpreter changed or was removed, or the dependencies in `pyproject.toml` changed
+(pip doesn't upgrade git dependencies by itself), build it from scratch:
+
+```sh
+rm -rf venv
+# then the commands from "Create the venv"
+```
+
+To update only a git dependency (e.g. a new canopen-asyncio commit):
+
+```sh
+./venv/bin/pip install --force-reinstall --no-deps "canopen@git+https://github.com/mrk-its/canopen-asyncio"
+```
+
+### Run
+
+```sh
+./venv/bin/can2mqtt -i socketcan -c can0 -s mqtt://user:password@localhost
+```
+
+(see `./venv/bin/can2mqtt --help`; `-i esp_usb_serial -c /dev/ttyACM0` for an ESP USB-serial CAN
+adapter).
+
+### Tests
+
+```sh
 ./venv/bin/python -m pytest tests
 ```
 
 Tests use the python-can `virtual` interface, no CAN hardware is needed.
+
+### Formatting
+
+```sh
+./venv/bin/black src tests
+```

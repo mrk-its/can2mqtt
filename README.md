@@ -108,6 +108,8 @@ NMT commands can also be sent directly: publish the command number or name to
 
 Developer documentation (architecture, design notes) is in [docs/](docs/README.md).
 
+Local setup (virtualenv, tests): [docs/README.md#development-setup](docs/README.md#development-setup).
+
 # Support
 
 * [Discord Server](https://discord.gg/VXjUSnUWsd)
