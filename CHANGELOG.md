@@ -1,3 +1,15 @@
+# v0.2.13 - unreleased
+- **Restart** button for every node (sends the CANopen NMT "reset node" command, the node reboots
+  and is registered again); **NMT Start / Stop / Pre-operational** buttons, disabled by default
+- `node_cmd_XXX/nmt` topic: accepts command names (`RESET`, `pre_operational`, …) and hex numbers
+  (`0x81`)
+- fix an invalid payload on `node_cmd_XXX/nmt` stopping can2mqtt
+- remote logs: node log lines below INFO (debug / verbose) are shown at INFO, without
+  `--log-level DEBUG`
+- remote logs: fix Log Data transfers aborted with SDO abort 0x05040004 (CRC error) on CANopenNode
+  based nodes
+- docs: development setup (local virtualenv) in `docs/README.md`
+
 # v0.2.12 - 2026-10-26
 - faster startup: read the TPDO configuration during the pause before publishing initial
   states instead of waiting idle
