@@ -24,6 +24,7 @@ from canopen.objectdictionary import (
     ODVariable,
 )
 
+from . import program_download
 from .utils import parse_mqtt_server_url
 from .entities import (
     EntityRegistry,
@@ -201,16 +202,27 @@ async def process_node(
     await entity.publish_config(mqtt_client)
     logger.info("  entity: %r", entity)
 
-    supports_firmware_update = 0
-    firmware_flags = 1  # firmware compression is enabled by default
-    try:
-        supports_firmware_update = bool(
-            await node.sdo["Firmware"]["Firmware Max Index"].aget_raw()
-        )
-        if supports_firmware_update:
-            firmware_flags = await node.sdo["Firmware"]["Firmware Flags"].aget_raw()
-    except SdoAbortedError as e:
-        pass
+    # hub OTA (CiA 302-3 objects), or the 0x3000 objects of canopen_entities and the old component
+    node.program_download = await program_download.supported(node)
+    supports_firmware_update = node.program_download
+    firmware_flags = 0  # the hub OTA takes no compressed images
+    if not node.program_download:
+        firmware_flags = 1  # firmware compression is enabled by default
+        try:
+            supports_firmware_update = bool(
+                await node.sdo["Firmware"]["Firmware Max Index"].aget_raw()
+            )
+            if supports_firmware_update:
+                firmware_flags = await node.sdo["Firmware"]["Firmware Flags"].aget_raw()
+        except SdoAbortedError as e:
+            pass
+    logger.info(
+        "node %02x: firmware update: %s",
+        node.id,
+        "CiA 302-3"
+        if node.program_download
+        else ("0x3000" if supports_firmware_update else "none"),
+    )
 
     update_entity = EntityRegistry.create(
         255, node, 255, mqtt_topic_prefix=mqtt_topic_prefix
@@ -485,6 +497,7 @@ async def can_reader(
                 node.log_task = None
                 node.log_stop = None
                 node.firmware_upload_running = False
+                node.program_download = False  # set at registration
                 node.register_task = None  # running registration_task()
                 node.reload_count = 0  # bumped by reload_node()
 
@@ -510,6 +523,22 @@ async def can_reader(
             raise QuitException("watchdog timeout", WATCHDOG_TIMEOUT_EXIT_CODE)
 
 
+async def legacy_upload(node, payload, compress):
+    """OD 0x3000 (canopen_entities and the old component). Returns what was sent: compressed if asked to."""
+    firmware = node.sdo["Firmware"]
+    await firmware["Firmware Size"].aset_raw(len(payload))
+    await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
+    logger.info("writing Firmware Data (block transfer), compression: %s", compress)
+    if compress:
+        compressed = zlib.compress(payload)
+        logger.info("firmware size: %d, compressed: %d", len(payload), len(compressed))
+        payload = compressed
+    else:
+        logger.info("firmware size: %d", len(payload))
+    await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
+    return payload
+
+
 async def firmware_upload(
     can_network: Network, node_id: int, payload, mqtt_client=None, compress=False
 ):
@@ -519,23 +548,8 @@ async def firmware_upload(
         return
     node.firmware_upload_running = True  # pauses the remote log reader
     try:
-        # TODO:
-        # node.nmt.send_command(NMT_COMMANDS["PRE-OPERATIONAL"])
         logger.info("Upload of %d bytes to node %d started", len(payload), node_id)
         t = time.time()
-        firmware = node.sdo["Firmware"]
-        await firmware["Firmware Size"].aset_raw(len(payload))
-        await firmware["Firmware MD5"].aset_raw(hashlib.md5(payload).digest())
-        logger.info("writing Firmware Data (block transfer), compression: %s", compress)
-        if compress:
-            compressed = zlib.compress(payload)
-            logger.info(
-                "firmware size: %d, compressed: %d", len(payload), len(compressed)
-            )
-            payload = compressed
-        else:
-            logger.info("firmware size: %d", len(payload))
-
         event_loop = asyncio.get_event_loop()
 
         def progress_cb(pos, size):
@@ -547,7 +561,10 @@ async def firmware_upload(
                 print(e)
 
         node.sdo.progress_cb = progress_cb
-        await firmware["Firmware Data"].aset_data(payload, block_transfer=True)
+        if getattr(node, "program_download", False):
+            await program_download.upload(node, payload)
+        else:
+            payload = await legacy_upload(node, payload, compress)
         dt = time.time() - t
         logger.info(
             "Successfuly uploaded %d bytes to node %d, (%.1f seconds, %.0f bytes/sec)",
@@ -692,7 +709,11 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                         compress = bool(flags & 1)
                         asyncio.create_task(
                             firmware_upload(
-                                can_network, int(node_id, 16), message.payload, compress
+                                can_network,
+                                int(node_id, 16),
+                                message.payload,
+                                mqtt_client,
+                                compress,
                             )
                         )
                     case (node_id, "write", arg):

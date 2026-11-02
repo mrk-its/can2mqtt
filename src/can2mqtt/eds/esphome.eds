@@ -124,6 +124,70 @@ ObjectType=7
 DataType=7
 AccessType=R
 
+[1f50]
+ParameterName=Program Data
+ObjectType=8
+
+[1f50sub0]
+ParameterName=Program Data Max Index
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1f50sub1]
+ParameterName=Program Data 1
+ObjectType=7
+DataType=0xf
+AccessType=W
+
+[1f51]
+ParameterName=Program Control
+ObjectType=8
+
+[1f51sub0]
+ParameterName=Program Control Max Index
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1f51sub1]
+ParameterName=Program Control 1
+ObjectType=7
+DataType=5
+AccessType=RW
+
+[1f56]
+ParameterName=Program Identification
+ObjectType=8
+
+[1f56sub0]
+ParameterName=Program Identification Max Index
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1f56sub1]
+ParameterName=Program Identification 1
+ObjectType=7
+DataType=7
+AccessType=R
+
+[1f57]
+ParameterName=Flash Status
+ObjectType=8
+
+[1f57sub0]
+ParameterName=Flash Status Max Index
+ObjectType=7
+DataType=5
+AccessType=R
+
+[1f57sub1]
+ParameterName=Flash Status 1
+ObjectType=7
+DataType=7
+AccessType=R
+
 [3000]
 ParameterName=Firmware
 ObjectType=9

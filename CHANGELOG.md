@@ -9,6 +9,11 @@
 - remote logs: fix Log Data transfers aborted with SDO abort 0x05040004 (CRC error) on CANopenNode
   based nodes
 - docs: development setup (local virtualenv) in `docs/README.md`
+- firmware update on the CiA 302-3 program download objects (`0x1F50`, `0x1F51`, `0x1F56`,
+  `0x1F57`, `ota: - platform: canopen` of the esphome-canopen hub), chosen per node at registration;
+  the `0x3000` objects keep working for all other nodes. The node reports a CRC-32 of the received
+  image, checked before it is started
+- fix `node_cmd_XXX/firmware` passing the compression flag as the MQTT client
 
 # v0.2.12 - 2026-10-26
 - faster startup: read the TPDO configuration during the pause before publishing initial
