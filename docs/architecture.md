@@ -43,6 +43,8 @@ node id to `can_network.scanner.nodes` for heartbeat (0x700), SDO response (0x58
   | `availability`, `availability_topic` | last published availability |
   | `ntm_state_entity`, `update_entity` | built-in entities 0 (NMT state) and 255 (firmware update) |
   | `log_task`, `log_stop` | remote log reader, see `remote_logs.py` |
+  | `log_level` | remote log level subscribed to (`remote_logs.setup()`), `None`: no remote logs |
+  | `log_level_entity`, `remote_log_level` | the log level select and the level chosen with it, see [Remote log level](#remote-log-level) |
   | `firmware_upload_running` | pauses the remote log reader during OTA |
 
 - adds the heartbeat callback `get_heartbeat_cb()`: updates `last_heartbeat_time`, resets the
@@ -65,7 +67,7 @@ The task calls `register_node()`:
    - reads SoftwareVersion, DeviceName, HardwareVersion, ProducerHeartbeatTime;
    - publishes discovery config for the NMT state entity (index 0) and the firmware update entity
      (index 255, upload enabled if the node has `Firmware Max Index`) and the NMT buttons (see below);
-   - sets up remote logs (`remote_logs.setup()`);
+   - sets up remote logs (`setup_remote_logs()`), publishes the log level select;
    - reads the EntityTypes array (0x2000 for revision 0, 0x2001 for revision 1). For every entity:
      `EntityRegistry.create()`, adds the `states` / `cmds` records at `0x2000 + index * 16 + 1 / + 2`,
      reads the entity metadata from `0x2000 + index * 16`, publishes its discovery config;
@@ -109,6 +111,7 @@ supervisor / add-on).
 | `<prefix>/node_cmd_XXX/update/<flags>` | install firmware from the firmware directory (update entity) |
 | `<prefix>/node_cmd_XXX/firmware/<flags>` | upload firmware sent in the payload |
 | `<prefix>/node_cmd_XXX/write/<index>[:<subindex>]` | raw SDO writes (hex values) |
+| `<prefix>/node_cmd_XXX/log_level` | remote log level (`NONE` … `VERY_VERBOSE`, the log level select) |
 
 Published by can2mqtt:
 
@@ -117,12 +120,13 @@ Published by can2mqtt:
 | `<prefix>/<component>/<unique_id>/config` | Home Assistant discovery config |
 | `<prefix>/can_state_XXX_KKKKKKKK` | entity state (from TPDOs) |
 | `<prefix>/node_state_XXX/update` | NMT state entity |
+| `<prefix>/node_state_XXX/log_level` | remote log level subscribed to |
 | `<prefix>/can_XXX/availability` | node availability |
 | `<prefix>/can2mqtt/status` | can2mqtt availability (last will `offline`) |
 
 ## NMT buttons
 
-Built-in entities (`BUILTIN = True`: NMT state, update, NMT buttons) are created by can2mqtt for
+Built-in entities (`BUILTIN = True`: NMT state, update, NMT buttons, log level select) are created by can2mqtt for
 every node; they aren't in the node's EntityTypes, so the stale entity cleanup in `process_node()`
 skips them.
 
@@ -144,6 +148,26 @@ button); reset communication (`0x82`) isn't implemented there, so there is no bu
 NMT state (`INITIALISING` after a reset) until the next heartbeat. After a restart the node sends a
 boot-up heartbeat: `reload_node()`, and the node is registered again once it is `OPERATIONAL`. An NMT
 command during a firmware upload is sent anyway (a restart aborts the upload), with a warning.
+
+## Remote log level
+
+Nodes whose OD has `0x3100` (esphome-canopen `remote_logs:`) get a `RemoteLogLevelSelect`, unique id
+`can_XXX_remote_log_level`, options `NONE` … `VERY_VERBOSE` (`remote_logs.ESPHOME_LOG_LEVELS`), state = the
+level subscribed to (`node.log_level`). A node flashed without `remote_logs:` loses it at its next
+registration.
+
+- Registration subscribes at `node.remote_log_level` (set by the select) or else `--remote-log-level`
+  (default `NONE`: not subscribed; `AUTO`: the node's default level `0x3100:5`). With `NONE` nothing is
+  written: the node switches its logging off after its Log Timeout.
+- A command on `node_cmd_XXX/log_level` sets `node.remote_log_level` and runs `change_remote_log_level()`
+  as a background task (stopping the reader may wait for its SDO transfer): `remote_logs.setup()` again,
+  `NONE` writes Log Level 0 so the node stops buffering at once.
+- `node.remote_log_level` lives on the `RemoteNode`, which survives `reload_node()`: after a node reboot
+  the registration subscribes right away, and the node keeps the lines buffered since boot (it clears
+  its buffer only when the level goes from 0 to non-zero). Boot logs: choose a level, restart the node.
+  It is not persisted: a can2mqtt restart starts from `--remote-log-level` again.
+- `remote_logs.setup()` holds a per-node lock (`node.log_setup_lock`): registration and the select
+  don't start two readers.
 
 ## SDO concurrency rules
 

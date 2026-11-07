@@ -7,6 +7,8 @@ import math
 from canopen.objectdictionary import ODVariable, ODRecord
 from canopen.node import RemoteNode
 
+from .remote_logs import ESPHOME_LOG_LEVELS
+
 
 class OctetString(ODVariable):
     def __init__(self, name, index, subindex):
@@ -447,6 +449,49 @@ class NMTButton(Entity):
 
     def __repr__(self):
         return f"{self.__class__.__name__}(node_id=0x{self.node.id:02x}, key={self.key})"
+
+
+class RemoteLogLevelSelect(Entity):
+    """Remote log level of a node with esphome-canopen remote_logs: (OD 0x3100), chosen in Home Assistant.
+
+    The choice is kept in memory (node.remote_log_level) and applied again when the node reboots, so the reader
+    subscribes right after the boot-up and gets the boot logs from the node's buffer. The state is the level
+    subscribed to (node.log_level).
+    """
+
+    TYPE_NAME = "select"
+    BUILTIN = True
+
+    def __init__(self, node, mqtt_topic_prefix):
+        super().__init__(node, None, mqtt_topic_prefix, 0)
+
+    def get_unique_id(self):
+        return f"can_{self.node.id:03x}_remote_log_level"
+
+    def get_command_topic(self):
+        return f"{self.mqtt_topic_prefix}/node_cmd_{self.node.id:03x}/log_level"
+
+    def get_state_topic(self):
+        return f"{self.mqtt_topic_prefix}/node_state_{self.node.id:03x}/log_level"
+
+    def get_mqtt_config(self):
+        config = super().get_mqtt_config()
+        config["name"] = "Remote log level"
+        config["options"] = ESPHOME_LOG_LEVELS
+        config["command_topic"] = self.get_command_topic()
+        config["state_topic"] = self.get_state_topic()
+        config["entity_category"] = "config"
+        config["icon"] = "mdi:text-box-search-outline"
+        return config
+
+    async def publish_state(self, mqtt_client):
+        level = getattr(self.node, "log_level", None) or 0
+        await mqtt_client.publish(
+            self.get_state_topic(), payload=ESPHOME_LOG_LEVELS[level], retain=False
+        )
+
+    async def mqtt_initial_publish(self, mqtt_client):
+        await self.publish_state(mqtt_client)
 
 
 def float_to_str(value):

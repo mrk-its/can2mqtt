@@ -104,6 +104,21 @@ NMT commands can also be sent directly: publish the command number or name to
 `<prefix>/node_cmd_XXX/nmt` (`XXX` = node id in hex, `000` = all nodes), e.g.
 `mosquitto_pub -t homeassistant/node_cmd_012/nmt -m RESET`.
 
+# Remote logs
+
+Nodes with esphome-canopen `remote_logs:` get a **Remote log level** select (device configuration section
+in HA). Choosing a level makes can2mqtt read the node's ESPHome logs at that level and print them as
+`node.<name>` log lines; `NONE` stops it. Nothing is read until a level is chosen (option
+`remote_log_level` / `--remote-log-level`: `NONE` by default, `AUTO` uses each node's `remote_logs: level:`).
+
+The level is kept in memory until can2mqtt restarts, also when the node reboots. To see a node's boot logs,
+choose a level and press its **Restart** button: the node buffers its logs from boot (at its
+`remote_logs: level:`, which must not be `NONE`) and can2mqtt reads them as soon as the node is registered
+again. The node must be registered within its `remote_logs: timeout:` (30 s by default) and its
+`buffer_size:` must hold the boot logs.
+
+The level can also be set over MQTT: `mosquitto_pub -t homeassistant/node_cmd_012/log_level -m DEBUG`.
+
 # Development
 
 Developer documentation (architecture, design notes) is in [docs/](docs/README.md).

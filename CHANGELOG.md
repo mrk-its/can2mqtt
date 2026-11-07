@@ -9,6 +9,11 @@
 - remote logs: fix Log Data transfers aborted with SDO abort 0x05040004 (CRC error) on CANopenNode
   based nodes
 - docs: development setup (local virtualenv) in `docs/README.md`
+- **Remote log level** select for every node with remote logs: choose the level in Home Assistant,
+  `NONE` stops reading; the choice survives node reboots (restart the node to see its boot logs) until
+  can2mqtt restarts. Also `node_cmd_XXX/log_level`
+- **remote logs are no longer read by default**: `remote_log_level` / `--remote-log-level` defaults
+  to `NONE` (was `AUTO`); set `AUTO` for the old behaviour
 - firmware update on the CiA 302-3 program download objects (`0x1F50`, `0x1F51`, `0x1F56`,
   `0x1F57`, `ota: - platform: canopen` of the esphome-canopen hub), chosen per node at registration;
   the `0x3000` objects keep working for all other nodes. The node reports a CRC-32 of the received

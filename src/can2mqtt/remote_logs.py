@@ -76,37 +76,55 @@ def intervals(timeout_ms):
     return min(10.0, timeout / 3), min(1.0, timeout / 3)
 
 
-async def setup(node, mode):
-    """Probe the node for remote logs and (re)start its log reader. mode: AUTO, NONE or an ESPHome level."""
-    await stop_and_wait(node)
-    if mode == "NONE":
-        return
-    try:
-        await node.sdo.aupload(LOGS_INDEX, LOG_LEVEL)
-    except SdoAbortedError:
-        logger.debug("node %02x: no remote logs support", node.id)
-        return
-    default_level = await _read_u(node, LOG_DEFAULT_LEVEL, 0)
-    timeout_ms = await _read_u(node, LOG_TIMEOUT, DEFAULT_TIMEOUT_MS)
-    block_size = await _read_u(node, LOG_BLOCK_SIZE, 0)
-    block_size_note = ""
-    if not block_size:
-        block_size = DEFAULT_BLOCK_SIZE
-        block_size_note = " (default, node has no 0x3100:7)"
-    level = default_level if mode == "AUTO" else ESPHOME_LOG_LEVELS.index(mode)
-    if not level:
-        logger.info("node %02x: remote logs available, not subscribed (level NONE)", node.id)
-        return
-    logger.info(
-        "node %02x: subscribing to remote logs, level %s, node timeout %d ms, block size %d%s",
-        node.id,
-        ESPHOME_LOG_LEVELS[level],
-        timeout_ms,
-        block_size,
-        block_size_note,
-    )
-    node.log_stop = asyncio.Event()
-    node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms, block_size, node.log_stop))
+def _setup_lock(node):
+    """One setup() per node at a time: registration and the log level select may run it together."""
+    lock = getattr(node, "log_setup_lock", None)
+    if lock is None:
+        lock = node.log_setup_lock = asyncio.Lock()
+    return lock
+
+
+async def setup(node, mode, turn_off=False):
+    """Probe the node for remote logs and (re)start its log reader. mode: AUTO, NONE or an ESPHome level.
+
+    Returns the level subscribed to (0: not subscribed), None if the node has no remote logs; also kept in
+    node.log_level. turn_off: when not subscribing, write Log Level 0, so the node stops buffering now instead of
+    after its Log Timeout (the log level select; registration leaves the node's boot buffer alone).
+    """
+    async with _setup_lock(node):
+        await stop_and_wait(node)
+        node.log_level = None
+        try:
+            await node.sdo.aupload(LOGS_INDEX, LOG_LEVEL)
+        except SdoAbortedError:
+            logger.debug("node %02x: no remote logs support", node.id)
+            return None
+        node.log_level = 0
+        default_level = await _read_u(node, LOG_DEFAULT_LEVEL, 0)
+        timeout_ms = await _read_u(node, LOG_TIMEOUT, DEFAULT_TIMEOUT_MS)
+        block_size = await _read_u(node, LOG_BLOCK_SIZE, 0)
+        block_size_note = ""
+        if not block_size:
+            block_size = DEFAULT_BLOCK_SIZE
+            block_size_note = " (default, node has no 0x3100:7)"
+        level = default_level if mode == "AUTO" else ESPHOME_LOG_LEVELS.index(mode)
+        if not level:
+            if turn_off:
+                await node.sdo.adownload(LOGS_INDEX, LOG_LEVEL, bytes([0]))
+            logger.info("node %02x: remote logs available, not subscribed (level NONE)", node.id)
+            return 0
+        logger.info(
+            "node %02x: subscribing to remote logs, level %s, node timeout %d ms, block size %d%s",
+            node.id,
+            ESPHOME_LOG_LEVELS[level],
+            timeout_ms,
+            block_size,
+            block_size_note,
+        )
+        node.log_level = level
+        node.log_stop = asyncio.Event()
+        node.log_task = asyncio.create_task(log_reader(node, level, timeout_ms, block_size, node.log_stop))
+        return level
 
 
 def stop(node):

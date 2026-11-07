@@ -39,8 +39,9 @@ def main():
         "--remote-log-level",
         type=str.upper,
         choices=can2mqtt.remote_logs.REMOTE_LOG_LEVEL_CHOICES,
-        help="ESPHome log level to subscribe nodes with remote_logs: to; AUTO (default) uses each node's "
-        "remote_logs: level, NONE disables remote logs",
+        help="ESPHome log level to subscribe nodes with remote_logs: to, until a level is chosen with the "
+        "node's 'Remote log level' select in Home Assistant; NONE (default): not subscribed, AUTO: each node's "
+        "remote_logs: level",
     )
     args = parser.parse_args()
 

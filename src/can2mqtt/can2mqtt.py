@@ -33,6 +33,7 @@ from .entities import (
     Entity,
     NMTButton,
     NMT_BUTTONS,
+    RemoteLogLevelSelect,
 )
 from . import firmware_scanner
 from . import remote_logs
@@ -104,7 +105,7 @@ class WatchdogTimer:
 
 
 watchdog_timer = None
-remote_log_mode = "AUTO"  # --remote-log-level
+remote_log_mode = "NONE"  # --remote-log-level, until a level is chosen with the node's log level select
 
 
 def reload_node(node):
@@ -239,10 +240,7 @@ async def process_node(
         await button.publish_config(mqtt_client)
         logger.info("  entity: %r", button)
 
-    try:
-        await remote_logs.setup(node, remote_log_mode)
-    except SdoCommunicationError as e:
-        logger.warning("node %02x: remote logs setup failed: %r", node.id, e)
+    await setup_remote_logs(mqtt_client, mqtt_topic_prefix, node)
 
     if revision == 0:
         entity_types_index = 0x2000
@@ -329,6 +327,40 @@ async def process_node(
     if node.update_entity:
         rev, _ = FIRMWARE_MAP[node.id]
         await node.update_entity.publish_version(mqtt_client, rev)
+    if node.log_level_entity:
+        await node.log_level_entity.publish_state(mqtt_client)
+
+
+async def setup_remote_logs(mqtt_client, mqtt_topic_prefix, node):
+    """Subscribe to the node's remote logs at the level chosen with its log level select (kept across node
+    reboots), else --remote-log-level; publish the select for nodes with remote logs."""
+    mode = node.remote_log_level or remote_log_mode
+    try:
+        level = await remote_logs.setup(node, mode)
+    except SdoCommunicationError as e:
+        logger.warning("node %02x: remote logs setup failed: %r", node.id, e)
+        return
+    if level is not None:
+        node.log_level_entity = RemoteLogLevelSelect(node, mqtt_topic_prefix)
+        await node.log_level_entity.publish_config(mqtt_client)
+        logger.info("  entity: %r", node.log_level_entity)
+    elif node.log_level_entity:  # new firmware without remote_logs:
+        await node.log_level_entity.remove_config(mqtt_client)
+        Entity.remove_entity(node.log_level_entity.unique_id)
+        node.log_level_entity = None
+
+
+async def change_remote_log_level(mqtt_client, node, name):
+    """The node's log level select: subscribe at the new level now (NONE switches the node's logging off)."""
+    node.remote_log_level = name
+    logger.info("node %02x: remote log level %s", node.id, name)
+    try:
+        await remote_logs.setup(node, name, turn_off=True)
+    except (SdoAbortedError, SdoCommunicationError) as e:
+        # applied at the next registration
+        logger.warning("node %02x: remote log level change failed: %r", node.id, e)
+    if node.log_level_entity:
+        await node.log_level_entity.publish_state(mqtt_client)
 
 
 async def register_node(
@@ -496,6 +528,11 @@ async def can_reader(
                 node.ntm_state_entity = None
                 node.log_task = None
                 node.log_stop = None
+                # remote logs: the level subscribed to (remote_logs.setup()), the log level
+                # select, the level chosen with it (kept across node reboots)
+                node.log_level = None
+                node.log_level_entity = None
+                node.remote_log_level = None
                 node.firmware_upload_running = False
                 node.program_download = False  # set at registration
                 node.register_task = None  # running registration_task()
@@ -611,9 +648,13 @@ def send_nmt_command(can_network, node_id: int, cmd: int):
         can_network.send_message(0, [cmd, node_id])
 
 
+# references to fire-and-forget tasks, so they aren't garbage collected
+background_tasks = set()
+
+
 async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
     NODE_CMD = re.compile(
-        f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update)(/.*)?$"
+        f"{mqtt_topic_prefix}/node_cmd_([0-9a-f]{{3}})/(nmt|firmware|write|update|log_level)(/.*)?$"
     )
     async with mqtt_client.messages() as messages:
         await mqtt_client.subscribe(f"{mqtt_topic_prefix}/#")
@@ -680,6 +721,20 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                             logger.warning("invalid nmt command: %r", message.payload)
                             continue
                         send_nmt_command(can_network, int(node_id, 16), cmd)
+                    case (node_id, "log_level", None):
+                        name = message.payload.decode(errors="replace").strip().upper()
+                        node = can_network.get(int(node_id, 16))
+                        if name not in remote_logs.ESPHOME_LOG_LEVELS:
+                            logger.warning("invalid log level: %r", message.payload)
+                        elif not node or not getattr(node, "log_level_entity", None):
+                            logger.warning("node %s: no remote logs", node_id)
+                        else:
+                            # not awaited: stopping the reader can wait for an SDO transfer
+                            task = asyncio.create_task(
+                                change_remote_log_level(mqtt_client, node, name)
+                            )
+                            background_tasks.add(task)
+                            task.add_done_callback(background_tasks.discard)
                     case (node_id, "update", arg):
                         flags = int(arg[1:])
                         compress = bool(flags & 1)
@@ -793,7 +848,7 @@ async def start(
     firmware_dir=None,
     interface_opts_json=None,
     watchdog_timeout=60,
-    remote_log_level="AUTO",
+    remote_log_level="NONE",
     max_parallel_registrations=4,
     **kwargs,
 ):
