@@ -722,9 +722,11 @@ async def mqtt_reader(mqtt_client, can_network, mqtt_topic_prefix):
                             continue
                         send_nmt_command(can_network, int(node_id, 16), cmd)
                     case (node_id, "log_level", None):
-                        name = message.payload.decode(errors="replace").strip().upper()
+                        name = RemoteLogLevelSelect.level_name(
+                            message.payload.decode(errors="replace")
+                        )
                         node = can_network.get(int(node_id, 16))
-                        if name not in remote_logs.ESPHOME_LOG_LEVELS:
+                        if name is None:
                             logger.warning("invalid log level: %r", message.payload)
                         elif not node or not getattr(node, "log_level_entity", None):
                             logger.warning("node %s: no remote logs", node_id)

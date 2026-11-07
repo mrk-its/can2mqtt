@@ -111,7 +111,7 @@ supervisor / add-on).
 | `<prefix>/node_cmd_XXX/update/<flags>` | install firmware from the firmware directory (update entity) |
 | `<prefix>/node_cmd_XXX/firmware/<flags>` | upload firmware sent in the payload |
 | `<prefix>/node_cmd_XXX/write/<index>[:<subindex>]` | raw SDO writes (hex values) |
-| `<prefix>/node_cmd_XXX/log_level` | remote log level (`NONE` … `VERY_VERBOSE`, the log level select) |
+| `<prefix>/node_cmd_XXX/log_level` | remote log level (`OFF` or `NONE`, `ERROR` … `VERY_VERBOSE`, the log level select) |
 
 Published by can2mqtt:
 
@@ -152,7 +152,8 @@ command during a firmware upload is sent anyway (a restart aborts the upload), w
 ## Remote log level
 
 Nodes whose OD has `0x3100` (esphome-canopen `remote_logs:`) get a `RemoteLogLevelSelect`, unique id
-`can_XXX_remote_log_level`, options `NONE` … `VERY_VERBOSE` (`remote_logs.ESPHOME_LOG_LEVELS`), state = the
+`can_XXX_remote_log_level`, options `OFF`, `ERROR` … `VERY_VERBOSE` (level 0 is `OFF`, not `NONE`: Home Assistant's MQTT select reads a
+state of `none` as no option, shown as unknown), state = the
 level subscribed to (`node.log_level`). A node flashed without `remote_logs:` loses it at its next
 registration.
 
@@ -161,7 +162,7 @@ registration.
   written: the node switches its logging off after its Log Timeout.
 - A command on `node_cmd_XXX/log_level` sets `node.remote_log_level` and runs `change_remote_log_level()`
   as a background task (stopping the reader may wait for its SDO transfer): `remote_logs.setup()` again,
-  `NONE` writes Log Level 0 so the node stops buffering at once.
+  `OFF` writes Log Level 0 (the node goes back to its default level).
 - `node.remote_log_level` lives on the `RemoteNode`, which survives `reload_node()`: after a node reboot
   the registration subscribes right away, and the node keeps the lines buffered since boot (it clears
   its buffer only when the level goes from 0 to non-zero). Boot logs: choose a level, restart the node.

@@ -10,7 +10,7 @@
   based nodes
 - docs: development setup (local virtualenv) in `docs/README.md`
 - **Remote log level** select for every node with remote logs: choose the level in Home Assistant,
-  `NONE` stops reading; the choice survives node reboots (restart the node to see its boot logs) until
+  `OFF` stops reading; the choice survives node reboots (restart the node to see its boot logs) until
   can2mqtt restarts. Also `node_cmd_XXX/log_level`
 - **remote logs are no longer read by default**: `remote_log_level` / `--remote-log-level` defaults
   to `NONE` (was `AUTO`); set `AUTO` for the old behaviour

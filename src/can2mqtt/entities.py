@@ -461,6 +461,16 @@ class RemoteLogLevelSelect(Entity):
 
     TYPE_NAME = "select"
     BUILTIN = True
+    # level 0 is OFF here, not NONE: Home Assistant's MQTT select reads a "none" state as no option (unknown)
+    OPTIONS = ["OFF", *ESPHOME_LOG_LEVELS[1:]]
+
+    @classmethod
+    def level_name(cls, option):
+        """The ESPHome level name of a command payload (OFF or NONE: NONE), None if invalid."""
+        option = option.strip().upper()
+        if option == "OFF":
+            return "NONE"
+        return option if option in ESPHOME_LOG_LEVELS else None
 
     def __init__(self, node, mqtt_topic_prefix):
         super().__init__(node, None, mqtt_topic_prefix, 0)
@@ -477,7 +487,7 @@ class RemoteLogLevelSelect(Entity):
     def get_mqtt_config(self):
         config = super().get_mqtt_config()
         config["name"] = "Remote log level"
-        config["options"] = ESPHOME_LOG_LEVELS
+        config["options"] = self.OPTIONS
         config["command_topic"] = self.get_command_topic()
         config["state_topic"] = self.get_state_topic()
         config["entity_category"] = "config"
@@ -487,7 +497,7 @@ class RemoteLogLevelSelect(Entity):
     async def publish_state(self, mqtt_client):
         level = getattr(self.node, "log_level", None) or 0
         await mqtt_client.publish(
-            self.get_state_topic(), payload=ESPHOME_LOG_LEVELS[level], retain=False
+            self.get_state_topic(), payload=self.OPTIONS[level], retain=False
         )
 
     async def mqtt_initial_publish(self, mqtt_client):

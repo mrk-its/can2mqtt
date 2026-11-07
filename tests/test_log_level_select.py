@@ -75,7 +75,7 @@ def test_select_config():
     assert entity.get_mqtt_config_topic() == CONFIG_TOPIC
     assert config["unique_id"] == f"can_{NODE_ID:03x}_remote_log_level"
     assert config["name"] == "Remote log level"
-    assert config["options"] == remote_logs.ESPHOME_LOG_LEVELS
+    assert config["options"] == ["OFF", *remote_logs.ESPHOME_LOG_LEVELS[1:]]
     assert config["command_topic"] == CMD_TOPIC
     assert config["state_topic"] == STATE_TOPIC
     assert config["entity_category"] == "config"
@@ -92,7 +92,7 @@ def test_default_registration_publishes_the_select_without_subscribing(default_m
             assert bench.node.log_level == 0
             assert [t for t, _ in mqtt.published] == [CONFIG_TOPIC]
             await bench.node.log_level_entity.publish_state(mqtt)
-            assert mqtt.states() == ["NONE"]
+            assert mqtt.states() == ["OFF"]  # not NONE: HA reads a "none" state as unknown
         # the node's boot buffer is left alone: it switches itself off after its Log Timeout
         assert bench.fake.level_writes == []
 
@@ -150,7 +150,7 @@ def test_select_none_switches_the_node_off(default_mode):
             await c2m.change_remote_log_level(mqtt, bench.node, "NONE")
             assert bench.node.log_task is None
             assert bench.node.remote_log_level == "NONE"
-            assert mqtt.states() == ["VERBOSE", "NONE"]
+            assert mqtt.states() == ["VERBOSE", "OFF"]
         assert bench.fake.level_writes[0] == LEVEL("VERBOSE")
         assert bench.fake.level_writes[-1] == 0
         assert bench.logs.level == 0
@@ -183,15 +183,16 @@ def test_log_level_command_topic(default_mode):
                 [
                     (CMD_TOPIC, b"bogus"),  # ignored
                     (f"{PREFIX}/node_cmd_034/log_level", b"DEBUG"),  # unknown node, ignored
+                    (CMD_TOPIC, b"OFF"),
                     (CMD_TOPIC, b"debug"),
                 ]
             )
             await c2m.mqtt_reader(mqtt, bench.network, PREFIX)
             await asyncio.gather(*c2m.background_tasks)
-            await wait_for(lambda: bench.fake.level_writes)
+            await wait_for(lambda: len(bench.fake.level_writes) >= 2)
             assert bench.node.remote_log_level == "DEBUG"
-            assert mqtt.states() == ["DEBUG"]
-        assert bench.fake.level_writes == [LEVEL("DEBUG")]
+            assert mqtt.states() == ["OFF", "DEBUG"]  # one setup() at a time, in order
+        assert bench.fake.level_writes[:2] == [0, LEVEL("DEBUG")]
 
     asyncio.run(run())
 

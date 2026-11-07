@@ -108,7 +108,7 @@ NMT commands can also be sent directly: publish the command number or name to
 
 Nodes with esphome-canopen `remote_logs:` get a **Remote log level** select (device configuration section
 in HA). Choosing a level makes can2mqtt read the node's ESPHome logs at that level and print them as
-`node.<name>` log lines; `NONE` stops it. Nothing is read until a level is chosen (option
+`node.<name>` log lines; `OFF` stops it. Nothing is read until a level is chosen (option
 `remote_log_level` / `--remote-log-level`: `NONE` by default, `AUTO` uses each node's `remote_logs: level:`).
 
 The level is kept in memory until can2mqtt restarts, also when the node reboots. To see a node's boot logs,
