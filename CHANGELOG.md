@@ -1,4 +1,10 @@
 # v0.2.13 - unreleased
+- numbers: Home Assistant gets the number's own `min` / `max` / `step` (metadata `0x09..0x0B` of
+  esphome-canopen `canopen_entities`; nodes without them: the range of a scaled encoding). The
+  encoding range (`0x07` / `0x08`) is no longer sent as `min_value` / `max_value`, which Home
+  Assistant ignored (numbers showed 0..100)
+- fix commands of scaled numbers (`size: 1` / `2`) written to the node unscaled: a number with
+  `min_value: 0`, `max_value: 720` set to 360 got 360 on the wire, which the node read as ~4
 - **Restart** button for every node (sends the CANopen NMT "reset node" command, the node reboots
   and is registered again); **NMT Start / Stop / Pre-operational** buttons, disabled by default
 - `node_cmd_XXX/nmt` topic: accepts command names (`RESET`, `pre_operational`, …) and hex numbers

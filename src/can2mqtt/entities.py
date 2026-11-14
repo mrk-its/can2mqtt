@@ -533,6 +533,14 @@ class Sensor(StateMixin, Entity):
 
 
 class MinMaxValueMixin:
+    """Scaled UINT8 / UINT16 states and commands (OBJECT_DICTIONARY.md, "Scaled values").
+
+    Metadata 7 / 8 are the range of the encoding, not limits for Home Assistant: kept in
+    `self.scale`, out of the discovery config.
+    """
+
+    SCALE_PROPERTIES = ("min_value", "max_value")
+
     def canopen_metadata_properties(self):
         yield from super().canopen_metadata_properties()
         yield 7, "min_value"
@@ -540,24 +548,60 @@ class MinMaxValueMixin:
 
     def setup_object_dictionary(self, node, base_index):
         super().setup_object_dictionary(node, base_index)
-        logger.info("min max, setup od")
-        v = ODVariable("meta_min_value", base_index, 7)
-        v.data_type = datatypes.REAL32
-        node.object_dictionary[base_index].add_member(v)
-        v = ODVariable("meta_min_value", base_index, 8)
-        v.data_type = datatypes.REAL32
-        node.object_dictionary[base_index].add_member(v)
+        for sub, name in ((7, "meta_min_value"), (8, "meta_max_value")):
+            v = ODVariable(name, base_index, sub)
+            v.data_type = datatypes.REAL32
+            node.object_dictionary[base_index].add_member(v)
+
+    @cached_property
+    def scale(self):
+        return {}
+
+    def set_property(self, key, value):
+        if key in self.SCALE_PROPERTIES:
+            self.scale[key] = value
+        else:
+            super().set_property(key, value)
+
+    def scale_range(self):
+        return self.scale.get("min_value", 0.0), self.scale.get(
+            "max_value", self.N_LEVELS - 1.0
+        )
 
     def get_mqtt_state(self, state_key, value):
-        if value == self.N_LEVELS:
-            value2 = math.nan
-        else:
-            min_val = self.props.get("min_value", 0)
-            max_val = self.props.get("max_value", self.N_LEVELS - 1)
-            value2 = scale_from_wire(value, min_val, max_val, self.N_LEVELS)
+        value2 = scale_from_wire(value, *self.scale_range(), self.N_LEVELS)
         return super().get_mqtt_state(state_key, value2)
 
-    # TODO: add scaling for commands in get_can_cmd
+    def get_can_cmd(self, topic, value):
+        cmd_key, value = super().get_can_cmd(topic, value)
+        return cmd_key, scale_to_wire(value, *self.scale_range(), self.N_LEVELS)
+
+
+class NumberLimitsMixin:
+    """The number's own min / max / step (metadata 9..11), Home Assistant's `min` / `max` / `step`.
+
+    Nodes without them (older firmware): the range of a scaled encoding if there is one, else
+    Home Assistant's defaults.
+    """
+
+    def canopen_metadata_properties(self):
+        yield from super().canopen_metadata_properties()
+        yield 9, "min"
+        yield 10, "max"
+        yield 11, "step"
+
+    def setup_object_dictionary(self, node, base_index):
+        super().setup_object_dictionary(node, base_index)
+        for sub, name in ((9, "meta_min"), (10, "meta_max"), (11, "meta_step")):
+            v = ODVariable(name, base_index, sub)
+            v.data_type = datatypes.REAL32
+            node.object_dictionary[base_index].add_member(v)
+
+    def get_mqtt_config(self):
+        config = super().get_mqtt_config()
+        if "min" not in self.props and hasattr(self, "scale_range"):
+            config["min"], config["max"] = self.scale_range()
+        return config
 
 
 @EntityRegistry.register
@@ -769,7 +813,7 @@ class CoverV1(StateMixin, CommandMixin, Entity):
 
 
 @EntityRegistry.register
-class Number(StateMixin, CommandMixin, Entity):
+class Number(NumberLimitsMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 8
     TYPE_NAME = "number"
 
@@ -781,7 +825,7 @@ class Number(StateMixin, CommandMixin, Entity):
 
 
 @EntityRegistry.register
-class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
+class Number8(NumberLimitsMixin, MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 9
     TYPE_NAME = "number"
     N_LEVELS = 255
@@ -790,11 +834,12 @@ class Number8(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
         yield "state_topic", float_to_str, datatypes.UNSIGNED8
 
     def commands(self):
-        yield "command_topic", int, datatypes.UNSIGNED8
+        # scaled to the wire by MinMaxValueMixin.get_can_cmd()
+        yield "command_topic", float, datatypes.UNSIGNED8
 
 
 @EntityRegistry.register
-class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
+class Number16(NumberLimitsMixin, MinMaxValueMixin, StateMixin, CommandMixin, Entity):
     TYPE_ID = 10
     TYPE_NAME = "number"
     N_LEVELS = 65535
@@ -803,7 +848,8 @@ class Number16(MinMaxValueMixin, StateMixin, CommandMixin, Entity):
         yield "state_topic", float_to_str, datatypes.UNSIGNED16
 
     def commands(self):
-        yield "command_topic", int, datatypes.UNSIGNED16
+        # scaled to the wire by MinMaxValueMixin.get_can_cmd()
+        yield "command_topic", float, datatypes.UNSIGNED16
 
 
 ALARM_COMMANDS = {
