@@ -1,4 +1,6 @@
 # v0.2.13 - unreleased
+- fix the MQTT password (`-s mqtt://user:password@host`) logged in clear text at startup, by
+  can2mqtt and by the add-on's `run.sh` command line echo (#19)
 - numbers: Home Assistant gets the number's own `min` / `max` / `step` (metadata `0x09..0x0B` of
   esphome-canopen `canopen_entities`; nodes without them: the range of a scaled encoding). The
   encoding range (`0x07` / `0x08`) is no longer sent as `min_value` / `max_value`, which Home

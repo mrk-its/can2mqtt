@@ -12,3 +12,8 @@ def parse_mqtt_server_url(mqtt_server: str):
             port=int(parsed.port or 1883),
         )
     return mqtt_server, extra_auth
+
+
+def redact_auth(extra_auth: dict) -> dict:
+    """extra_auth for logging: the password replaced with ``***``."""
+    return {k: ("***" if k == "password" and v else v) for k, v in extra_auth.items()}
