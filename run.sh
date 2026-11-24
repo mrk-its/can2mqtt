@@ -13,5 +13,7 @@ if test "$EXTRA_ARGS" == null; then
   EXTRA_ARGS=''
 fi
 
-set -x
+# the command line without the MQTT password (mqtt://user:password@host)
+SERVER_LOG=$(printf '%s' "$SERVER" | sed -E 's#^(mqtt://[^:@/]*:).*@#\1***@#')
+echo "+ can2mqtt -i $INTERFACE -s $SERVER_LOG -c $CHANNEL -b $BITRATE $TOPIC --sdo-response-timeout $TIMEOUT --firmware-dir $FIRMWARE_DIR --remote-log-level $REMOTE_LOG_LEVEL $EXTRA_ARGS"
 can2mqtt -i "$INTERFACE" -s "$SERVER" -c "$CHANNEL" -b "$BITRATE" $TOPIC --sdo-response-timeout $TIMEOUT --firmware-dir $FIRMWARE_DIR --remote-log-level $REMOTE_LOG_LEVEL $EXTRA_ARGS
